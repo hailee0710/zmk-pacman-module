@@ -1,0 +1,43 @@
+# Pacman Dongle Adapter Shield - Default Kconfig
+
+config DISPLAY
+  default y
+
+config DISPLAY_LOG_LEVEL
+  default 0
+
+config LVGL
+  default y
+
+config LVGL_COLOR_DEPTH
+  default 16
+
+config LVGL_HOR_RES
+  default 320
+
+config LVGL_VER_RES
+  default 172
+
+config LVGL_USE_DISP
+  default y
+
+config LVGL_BUF_ALLOC_DYNAMIC
+  default y
+
+config SPI
+  default y
+
+config GPIO
+  default y
+
+config ZMK_DONGLE_PACMAN
+  default y
+
+config ZMK_DONGLE_ACTION
+  default y
+
+config DISPLAY_LOG_LEVEL_DBG
+  default n
+
+config DISPLAY_LOG_LEVEL_INF
+  default y

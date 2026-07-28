@@ -1,0 +1,32 @@
+# Pacman Dongle Module Kconfig
+
+menuconfig ZMK_DONGLE_PACMAN
+  bool "Pacman Dongle Module"
+  default y
+  help
+    Enable the Pacman Dongle module for ZMK. This provides a
+    Pacman-themed status screen and game on an ST7789P3 172x320 display.
+
+if ZMK_DONGLE_PACMAN
+
+config ZMK_DONGLE_ACTION
+  bool "Dongle action behavior support"
+  default y
+  help
+    Enable the dongle action behavior that allows key bindings
+    to control the Pacman dongle (navigation, game controls, etc.).
+
+config ZMK_DONGLE_PACMAN_BUZZER
+  bool "Buzzer support for Pacman dongle"
+  default n
+  help
+    Enable buzzer/sound effects support for the Pacman dongle.
+
+config ZMK_DONGLE_PACMAN_THEME_PACMAN
+  bool "Enable Pacman theme"
+  default y
+  help
+    Enable the Pacman eating dots theme. When disabled, falls back
+    to basic status display without game animation.
+
+endif # ZMK_DONGLE_PACMAN

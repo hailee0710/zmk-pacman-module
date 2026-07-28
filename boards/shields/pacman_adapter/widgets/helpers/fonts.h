@@ -1,0 +1,89 @@
+/*
+ * Copyright (c) 2024
+ * SPDX-License-Identifier: MIT
+ *
+ * Bitmap fonts — ported from snake-module by joaopedropio
+ *
+ * Each character is a uint16_t array where:
+ *   0 = background (transparent / bg_color)
+ *   1 = foreground (text color)
+ *
+ * Available sizes: 3x5, 5x7 (scalable via the scale parameter)
+ */
+
+#pragma once
+
+#include <stdint.h>
+
+/* ---- Character enum ---- */
+typedef enum {
+    CHAR_0 = 0, CHAR_1, CHAR_2, CHAR_3, CHAR_4,
+    CHAR_5, CHAR_6, CHAR_7, CHAR_8, CHAR_9,
+    CHAR_A, CHAR_B, CHAR_C, CHAR_D, CHAR_E, CHAR_F,
+    CHAR_G, CHAR_H, CHAR_I, CHAR_J, CHAR_K, CHAR_L,
+    CHAR_M, CHAR_N, CHAR_O, CHAR_P, CHAR_Q, CHAR_R,
+    CHAR_S, CHAR_T, CHAR_U, CHAR_V, CHAR_W, CHAR_X,
+    CHAR_Y, CHAR_Z,
+    CHAR_COLON, CHAR_DASH, CHAR_PERCENTAGE, CHAR_DOT,
+    CHAR_EMPTY, CHAR_NONE,
+} Character;
+
+/* Convert ASCII char to Character enum */
+Character char_to_enum(char ch);
+
+/* ---- 3×5 font (all letters A-Z, digits 0-9, symbols) ---- */
+
+#define FONT_3x5_W 3
+#define FONT_3x5_H 5
+extern const uint16_t *num_bitmaps_3x5[10];
+extern const uint16_t *letter_bitmaps_3x5[26];
+extern const uint16_t colon_letter_3x5[15];
+extern const uint16_t dash_letter_3x5[15];
+extern const uint16_t percentage_letter_3x5[15];
+extern const uint16_t none_letter_3x5[15];
+
+/* ---- 5×7 font (digits 0-9, letters used for labels) ---- */
+
+#define FONT_5x7_W 5
+#define FONT_5x7_H 7
+extern const uint16_t *num_bitmaps_5x7[10];
+
+/* Individual letter bitmaps (5x7) */
+extern const uint16_t a_letter_5x7[35];
+extern const uint16_t b_letter_5x7[35];
+extern const uint16_t c_letter_5x7[35];
+extern const uint16_t d_letter_5x7[35];
+extern const uint16_t e_letter_5x7[35];
+extern const uint16_t f_letter_5x7[35];
+extern const uint16_t g_letter_5x7[35];
+extern const uint16_t h_letter_5x7[35];
+extern const uint16_t i_letter_5x7[35];
+extern const uint16_t j_letter_5x7[35];
+extern const uint16_t k_letter_5x7[35];
+extern const uint16_t l_letter_5x7[35];
+extern const uint16_t m_letter_5x7[35];
+extern const uint16_t n_letter_5x7[35];
+extern const uint16_t o_letter_5x7[35];
+extern const uint16_t p_letter_5x7[35];
+extern const uint16_t q_letter_5x7[35];
+extern const uint16_t r_letter_5x7[35];
+extern const uint16_t s_letter_5x7[35];
+extern const uint16_t t_letter_5x7[35];
+extern const uint16_t u_letter_5x7[35];
+extern const uint16_t v_letter_5x7[35];
+extern const uint16_t w_letter_5x7[35];
+extern const uint16_t x_letter_5x7[35];
+extern const uint16_t y_letter_5x7[35];
+extern const uint16_t z_letter_5x7[35];
+
+extern const uint16_t colon_bitmap_5x7[35];
+extern const uint16_t dash_bitmap_5x7[35];
+extern const uint16_t percentage_bitmap_5x7[35];
+extern const uint16_t empty_bitmap_5x7[35];
+extern const uint16_t none_bitmap_5x7[35];
+
+/* Lookup: given a Character enum, return the 5x7 bitmap */
+const uint16_t *get_bitmap_5x7(Character c);
+
+/* Lookup: given a Character enum, return the 3x5 bitmap */
+const uint16_t *get_bitmap_3x5(Character c);
