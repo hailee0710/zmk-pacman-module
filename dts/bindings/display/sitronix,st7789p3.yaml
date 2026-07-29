@@ -1,0 +1,39 @@
+# Copyright (c) 2024
+# SPDX-License-Identifier: MIT
+
+description: ST7789P3 320x172 display via SPI
+
+compatible: "sitronix,st7789p3"
+
+include: [spi-device.yaml]
+
+properties:
+  width:
+    type: int
+    default: 320
+  height:
+    type: int
+    default: 172
+  madctl:
+    type: int
+    default: 0x20
+  colmod:
+    type: int
+    default: 0x55
+  inversion:
+    type: boolean
+  x-offset:
+    type: int
+    default: 0
+  y-offset:
+    type: int
+    default: 0
+  reset-gpios:
+    type: phandle-array
+    required: true
+  dc-gpios:
+    type: phandle-array
+    required: true
+  bl-gpios:
+    type: phandle-array
+    required: false

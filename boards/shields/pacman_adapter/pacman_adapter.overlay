@@ -29,18 +29,16 @@
     cs-gpios = <&gpio0 4 GPIO_ACTIVE_LOW>;
 
     st7789p3: st7789p3@0 {
-        compatible = "sitronix,st7789v";
+        compatible = "sitronix,st7789p3";
         reg = <0>;
         spi-max-frequency = <40000000>;
         width = <320>;
         height = <172>;
-        madctl = <0x20>;   /* MV=1 for landscape: D7=MY, D6=MX, D5=MV */
-        colmod = <0x55>;   /* 16-bit RGB565 */
-        inversion = <0>;
+        madctl = <0x20>;
+        colmod = <0x55>;
         x-offset = <0>;
         y-offset = <0>;
         reset-gpios = <&gpio0 17 GPIO_ACTIVE_LOW>;
         dc-gpios = <&gpio0 16 GPIO_ACTIVE_LOW>;
-        bl-gpios = <&gpio1 13 GPIO_ACTIVE_HIGH>;
     };
 };

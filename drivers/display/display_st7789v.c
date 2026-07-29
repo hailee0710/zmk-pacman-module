@@ -19,6 +19,8 @@
 
 #include "display_st7789v.h"
 
+#define DT_DRV_COMPAT sitronix_st7789p3
+
 LOG_MODULE_REGISTER(display_st7789p3, CONFIG_DISPLAY_LOG_LEVEL);
 
 /* ST7789 commands */

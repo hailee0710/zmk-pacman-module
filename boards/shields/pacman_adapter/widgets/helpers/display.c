@@ -2,92 +2,92 @@
  * Copyright (c) 2024
  * SPDX-License-Identifier: MIT
  *
- * Display drawing helpers for ST7789P3 320x172 landscape
- * Bitmap font rendering matching original snake module approach
+ * Display drawing helpers — framebuffer-based rendering
+ *
+ * All drawing functions write to a static full-screen framebuffer.
+ * display_flush() sends the entire framebuffer to the display
+ * in one LVGL operation. Zero heap allocations during rendering.
  */
 
 #include <zephyr/kernel.h>
-#include <zephyr/device.h>
 #include <zephyr/logging/log.h>
 #include <string.h>
 #include <math.h>
-
 #include <lvgl.h>
+
 #include "display.h"
 #include "fonts.h"
 
 LOG_MODULE_REGISTER(display_helpers, CONFIG_DISPLAY_LOG_LEVEL);
 
-static lv_display_t *lvgl_display = NULL;
+/* Full-screen framebuffer (320 × 172 × 2 bytes = 110,080 bytes) */
+static uint16_t fb[DISPLAY_W * DISPLAY_H];
+static const struct device *disp_dev;
+static lv_display_t *lvgl_display;
 
-const struct device *display_get_device(void) {
-    return (const struct device *)lvgl_display;
+/* ---- Internal: fast horizontal line in framebuffer ---- */
+static inline void fb_hline(uint16_t x, uint16_t y, uint16_t w, uint16_t color) {
+    if (x >= DISPLAY_W || y >= DISPLAY_H) return;
+    if (x + w > DISPLAY_W) w = DISPLAY_W - x;
+    uint16_t *dst = &fb[y * DISPLAY_W + x];
+    for (uint16_t i = 0; i < w; i++) dst[i] = color;
 }
 
-/* ---- LVGL-based drawing primitives ---- */
-
-void display_fill(const struct device *dev, uint16_t color) {
-    lv_obj_t *scr = lv_scr_act();
-    lv_color_t c = lv_color_hex(color);
-    lv_obj_set_style_bg_color(scr, c, 0);
-    lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
-
-    lv_obj_t *rect = lv_obj_create(lv_layer_top());
-    lv_obj_remove_style_all(rect);
-    lv_obj_set_size(rect, DISPLAY_W, DISPLAY_H);
-    lv_obj_set_pos(rect, 0, 0);
-    lv_obj_set_style_bg_color(rect, c, 0);
-    lv_obj_set_style_bg_opa(rect, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(rect, 0, 0);
-    lv_obj_set_style_radius(rect, 0, 0);
-    lv_refr_now(lvgl_display);
-    lv_obj_delete(rect);
+static inline void fb_pixel(uint16_t x, uint16_t y, uint16_t color) {
+    if (x < DISPLAY_W && y < DISPLAY_H)
+        fb[y * DISPLAY_W + x] = color;
 }
 
-void display_fill_rect(const struct device *dev, uint16_t x1, uint16_t y1,
-                       uint16_t x2, uint16_t y2, uint16_t color) {
-    if (x2 < x1 || y2 < y1) return;
-    lv_obj_t *rect = lv_obj_create(lv_layer_top());
-    lv_obj_remove_style_all(rect);
-    lv_obj_set_size(rect, x2 - x1 + 1, y2 - y1 + 1);
-    lv_obj_set_pos(rect, x1, y1);
-    lv_obj_set_style_bg_color(rect, lv_color_hex(color), 0);
-    lv_obj_set_style_bg_opa(rect, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(rect, 0, 0);
-    lv_obj_set_style_radius(rect, 0, 0);
-    lv_refr_now(lvgl_display);
-    lv_obj_delete(rect);
+/* ---- Init ---- */
+int display_init(const struct device *dev) {
+    disp_dev = dev;
+    lvgl_display = lv_display_get_default();
+    if (!lvgl_display) {
+        LOG_ERR("No LVGL display found");
+        return -ENODEV;
+    }
+    memset(fb, 0, sizeof(fb));
+    LOG_INF("Framebuffer ready (%dx%d, %u bytes)", DISPLAY_W, DISPLAY_H, (unsigned)sizeof(fb));
+    return 0;
 }
 
-void display_draw_pixel(const struct device *dev, uint16_t x, uint16_t y,
-                        uint16_t color) {
-    display_fill_rect(dev, x, y, x, y, color);
+void display_begin_frame(void) {
+    /* Optionally clear — caller can draw background manually */
 }
 
-void display_draw_rect(const struct device *dev, uint16_t x1, uint16_t y1,
-                       uint16_t x2, uint16_t y2, uint16_t color) {
-    lv_obj_t *rect = lv_obj_create(lv_layer_top());
-    lv_obj_remove_style_all(rect);
-    lv_obj_set_size(rect, x2 - x1 + 1, y2 - y1 + 1);
-    lv_obj_set_pos(rect, x1, y1);
-    lv_obj_set_style_bg_opa(rect, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_color(rect, lv_color_hex(color), 0);
-    lv_obj_set_style_border_width(rect, 1, 0);
-    lv_obj_set_style_border_opa(rect, LV_OPA_COVER, 0);
-    lv_obj_set_style_radius(rect, 0, 0);
-    lv_refr_now(lvgl_display);
-    lv_obj_delete(rect);
+/* ---- Drawing primitives ---- */
+
+void display_fill(uint16_t color) {
+    for (uint32_t i = 0; i < DISPLAY_W * DISPLAY_H; i++) fb[i] = color;
 }
 
-void display_draw_line(const struct device *dev, uint16_t x1, uint16_t y1,
-                       uint16_t x2, uint16_t y2, uint16_t color) {
-    int16_t dx = abs((int16_t)x2 - (int16_t)x1);
-    int16_t dy = -abs((int16_t)y2 - (int16_t)y1);
-    int16_t sx = x1 < x2 ? 1 : -1;
-    int16_t sy = y1 < y2 ? 1 : -1;
+void display_fill_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color) {
+    if (x >= DISPLAY_W || y >= DISPLAY_H) return;
+    if (x + w > DISPLAY_W) w = DISPLAY_W - x;
+    if (y + h > DISPLAY_H) h = DISPLAY_H - y;
+    for (uint16_t row = 0; row < h; row++)
+        fb_hline(x, y + row, w, color);
+}
+
+void display_draw_pixel(uint16_t x, uint16_t y, uint16_t color) {
+    fb_pixel(x, y, color);
+}
+
+void display_draw_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color) {
+    fb_hline(x, y, w, color);                    /* top */
+    fb_hline(x, y + h - 1, w, color);            /* bottom */
+    for (uint16_t i = 0; i < h; i++) {           /* left + right */
+        fb_pixel(x, y + i, color);
+        fb_pixel(x + w - 1, y + i, color);
+    }
+}
+
+void display_draw_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color) {
+    int16_t dx = abs((int16_t)x2 - (int16_t)x1), sx = x1 < x2 ? 1 : -1;
+    int16_t dy = -abs((int16_t)y2 - (int16_t)y1), sy = y1 < y2 ? 1 : -1;
     int16_t err = dx + dy;
     while (1) {
-        display_draw_pixel(dev, x1, y1, color);
+        fb_pixel(x1, y1, color);
         if (x1 == x2 && y1 == y2) break;
         int16_t e2 = 2 * err;
         if (e2 >= dy) { err += dy; x1 += sx; }
@@ -95,189 +95,142 @@ void display_draw_line(const struct device *dev, uint16_t x1, uint16_t y1,
     }
 }
 
-void display_draw_circle(const struct device *dev, uint16_t cx, uint16_t cy,
-                         uint16_t radius, uint16_t color) {
-    int16_t x = radius, y = 0, err = 0;
+void display_draw_circle(uint16_t cx, uint16_t cy, uint16_t r, uint16_t color) {
+    int16_t x = r, y = 0, err = 0;
     while (x >= y) {
-        display_draw_pixel(dev, cx + x, cy + y, color);
-        display_draw_pixel(dev, cx + y, cy + x, color);
-        display_draw_pixel(dev, cx - y, cy + x, color);
-        display_draw_pixel(dev, cx - x, cy + y, color);
-        display_draw_pixel(dev, cx - x, cy - y, color);
-        display_draw_pixel(dev, cx - y, cy - x, color);
-        display_draw_pixel(dev, cx + y, cy - x, color);
-        display_draw_pixel(dev, cx + x, cy - y, color);
-        y += 1; err += 1 + 2 * y;
-        if (2 * (err - x) + 1 > 0) { x -= 1; err += 1 - 2 * x; }
+        fb_pixel(cx + x, cy + y, color); fb_pixel(cx + y, cy + x, color);
+        fb_pixel(cx - y, cy + x, color); fb_pixel(cx - x, cy + y, color);
+        fb_pixel(cx - x, cy - y, color); fb_pixel(cx - y, cy - x, color);
+        fb_pixel(cx + y, cy - x, color); fb_pixel(cx + x, cy - y, color);
+        y++; err += 1 + 2 * y;
+        if (2 * (err - x) + 1 > 0) { x--; err += 1 - 2 * x; }
     }
 }
 
-void display_draw_filled_circle(const struct device *dev, uint16_t cx, uint16_t cy,
-                                uint16_t radius, uint16_t color) {
-    int16_t x = radius, y = 0, err = 0;
+void display_draw_filled_circle(uint16_t cx, uint16_t cy, uint16_t r, uint16_t color) {
+    int16_t x = r, y = 0, err = 0;
     while (x >= y) {
-        display_draw_line(dev, cx - x, cy + y, cx + x, cy + y, color);
-        display_draw_line(dev, cx - y, cy + x, cx + y, cy + x, color);
-        display_draw_line(dev, cx - x, cy - y, cx + x, cy - y, color);
-        display_draw_line(dev, cx - y, cy - x, cx + y, cy - x, color);
-        y += 1; err += 1 + 2 * y;
-        if (2 * (err - x) + 1 > 0) { x -= 1; err += 1 - 2 * x; }
+        display_draw_line(cx - x, cy + y, cx + x, cy + y, color);
+        display_draw_line(cx - y, cy + x, cx + y, cy + x, color);
+        display_draw_line(cx - x, cy - y, cx + x, cy - y, color);
+        display_draw_line(cx - y, cy - x, cx + y, cy - x, color);
+        y++; err += 1 + 2 * y;
+        if (2 * (err - x) + 1 > 0) { x--; err += 1 - 2 * x; }
     }
 }
 
-void display_draw_filled_arc(const struct device *dev, uint16_t cx, uint16_t cy,
-                             uint16_t radius, int16_t start_angle, int16_t end_angle,
-                             uint16_t color) {
-    while (start_angle < 0) start_angle += 360;
-    while (start_angle >= 360) start_angle -= 360;
-    while (end_angle < 0) end_angle += 360;
-    while (end_angle >= 360) end_angle -= 360;
-    for (int16_t dy = -radius; dy <= (int16_t)radius; dy++) {
-        for (int16_t dx = -radius; dx <= (int16_t)radius; dx++) {
-            if (dx * dx + dy * dy <= (int16_t)(radius * radius)) {
-                int16_t angle = (int16_t)(atan2f((float)dy, (float)dx) * 180.0f / 3.14159265f);
-                if (angle < 0) angle += 360;
-                bool in_arc;
-                if (start_angle <= end_angle)
-                    in_arc = (angle >= start_angle && angle <= end_angle);
-                else
-                    in_arc = (angle >= start_angle || angle <= end_angle);
-                if (in_arc)
-                    display_draw_pixel(dev, cx + dx, cy + dy, color);
-            }
-        }
-    }
-}
+/* ---- Bitmap text rendering ---- */
 
-void display_write_bitmap(const struct device *dev, uint16_t x, uint16_t y,
-                          const uint16_t *bitmap, uint16_t w, uint16_t h) {
-    for (uint16_t row = 0; row < h; row++)
-        for (uint16_t col = 0; col < w; col++)
-            display_draw_pixel(dev, x + col, y + row, bitmap[row * w + col]);
-}
-
-/* ---- Bitmap font text rendering (matches snake module approach) ---- */
-
-void display_write_text(const struct device *dev, uint16_t x, uint16_t y,
-                        const char *text, uint16_t color, uint16_t bg_color,
-                        uint8_t scale) {
-    if (text == NULL || scale == 0) return;
-
-    uint16_t cursor_x = x;
+void display_write_text(uint16_t x, uint16_t y, const char *text,
+                        uint16_t color, uint16_t bg_color, uint8_t scale) {
+    if (!text || scale == 0) return;
+    uint16_t cx = x;
     uint8_t len = (uint8_t)strlen(text);
-
     for (uint8_t i = 0; i < len; i++) {
         Character c = char_to_enum(text[i]);
-        const uint16_t *bitmap = get_bitmap_5x7(c);
-
-        /* Render each row of the scaled character */
+        const uint16_t *bm = get_bitmap_5x7(c);
         for (uint8_t row = 0; row < FONT_5x7_H; row++) {
             for (uint8_t sr = 0; sr < scale; sr++) {
                 uint8_t run_start = 0;
-                bool in_run = false;
-                bool run_is_fg = false;
-
+                bool in_run = false, run_fg = false;
                 for (uint8_t col = 0; col < FONT_5x7_W; col++) {
-                    bool is_fg = (bitmap[row * FONT_5x7_W + col] != 0);
-
-                    if (!in_run) {
-                        run_start = col;
-                        run_is_fg = is_fg;
-                        in_run = true;
-                    } else if (is_fg != run_is_fg) {
-                        /* Flush previous run */
-                        uint16_t rx = cursor_x + run_start * scale;
-                        uint16_t ry = y + (row * scale) + sr;
-                        uint16_t rw = (col - run_start) * scale;
-                        display_fill_rect(dev, rx, ry, rx + rw - 1, ry,
-                                          run_is_fg ? color : bg_color);
-                        run_start = col;
-                        run_is_fg = is_fg;
+                    bool fg = (bm[row * FONT_5x7_W + col] != 0);
+                    if (!in_run) { run_start = col; run_fg = fg; in_run = true; }
+                    else if (fg != run_fg) {
+                        uint16_t rx = cx + run_start * scale;
+                        uint16_t ry = y + row * scale + sr;
+                        fb_hline(rx, ry, (col - run_start) * scale, run_fg ? color : bg_color);
+                        run_start = col; run_fg = fg;
                     }
                 }
-                /* Flush final run */
                 if (in_run) {
-                    uint16_t rx = cursor_x + run_start * scale;
-                    uint16_t ry = y + (row * scale) + sr;
-                    uint16_t rw = (FONT_5x7_W - run_start) * scale;
-                    display_fill_rect(dev, rx, ry, rx + rw - 1, ry,
-                                      run_is_fg ? color : bg_color);
+                    uint16_t rx = cx + run_start * scale;
+                    uint16_t ry = y + row * scale + sr;
+                    fb_hline(rx, ry, (FONT_5x7_W - run_start) * scale, run_fg ? color : bg_color);
                 }
             }
         }
-
-        cursor_x += FONT_5x7_W * scale;
+        cx += FONT_5x7_W * scale;
     }
 }
 
-/* ---- Pacman / Ghost / Dot drawing ---- */
+/* ---- Pacman / Ghost / Dot ---- */
 
-void display_draw_pacman(const struct device *dev, uint16_t cx, uint16_t cy,
-                         uint16_t radius, uint8_t direction, uint8_t mouth_open,
-                         uint16_t color) {
-    uint16_t mouth_angle;
-    switch (mouth_open) {
-        case 0: mouth_angle = 5;  break;
-        case 1: mouth_angle = 15; break;
-        case 2: mouth_angle = 30; break;
-        case 3: mouth_angle = 45; break;
-        default:mouth_angle = 30; break;
+static void fb_filled_arc(uint16_t cx, uint16_t cy, uint16_t r,
+                           int16_t sa, int16_t ea, uint16_t color) {
+    while (sa < 0) sa += 360; while (sa >= 360) sa -= 360;
+    while (ea < 0) ea += 360; while (ea >= 360) ea -= 360;
+    for (int16_t dy = -(int16_t)r; dy <= (int16_t)r; dy++) {
+        for (int16_t dx = -(int16_t)r; dx <= (int16_t)r; dx++) {
+            if (dx * dx + dy * dy <= (int16_t)(r * r)) {
+                int16_t a = (int16_t)(atan2f((float)dy, (float)dx) * 180.0f / 3.14159265f);
+                if (a < 0) a += 360;
+                bool in = (sa <= ea) ? (a >= sa && a <= ea) : (a >= sa || a <= ea);
+                if (in) fb_pixel(cx + dx, cy + dy, color);
+            }
+        }
     }
+}
+
+void display_draw_pacman(uint16_t cx, uint16_t cy, uint16_t r,
+                         uint8_t dir, uint8_t m, uint16_t color) {
+    uint16_t ma;
+    switch (m) { case 0:ma=5; break; case 1:ma=15; break; case 2:ma=30; break;
+                 case 3:ma=45; break; default:ma=30; break; }
     int16_t sa, ea;
-    switch (direction) {
-        case DIR_RIGHT: sa = mouth_angle;     ea = 360 - mouth_angle; break;
-        case DIR_DOWN:  sa = 90 + mouth_angle; ea = 90 - mouth_angle;
-                        if (ea < 0) ea += 360; break;
-        case DIR_LEFT:  sa = 180 + mouth_angle; ea = 180 - mouth_angle; break;
-        case DIR_UP:    sa = 270 + mouth_angle; ea = 270 - mouth_angle;
-                        if (ea < 0) ea += 360; break;
-        default:        sa = mouth_angle;     ea = 360 - mouth_angle; break;
+    switch (dir) {
+        case DIR_RIGHT: sa = ma;     ea = 360 - ma; break;
+        case DIR_DOWN:  sa = 90+ma;  ea = 90-ma; if(ea<0)ea+=360; break;
+        case DIR_LEFT:  sa = 180+ma; ea = 180-ma; break;
+        case DIR_UP:    sa = 270+ma; ea = 270-ma; if(ea<0)ea+=360; break;
+        default:        sa = ma;     ea = 360 - ma; break;
     }
-    display_draw_filled_arc(dev, cx, cy, radius, sa, ea, color);
+    fb_filled_arc(cx, cy, r, sa, ea, color);
 }
 
-void display_draw_ghost(const struct device *dev, uint16_t x, uint16_t y,
-                        uint16_t w, uint16_t h, uint16_t color, bool eyes_left) {
-    uint16_t r = w / 2;
-    uint16_t bh = h - 4;
-    display_draw_filled_circle(dev, x + r, y + r, r, color);
-    display_fill_rect(dev, x, y + r, x + w - 1, y + bh, color);
-    uint16_t sy = y + bh;
-    uint16_t ww = w / 3;
+void display_draw_ghost(uint16_t x, uint16_t y, uint16_t w, uint16_t h,
+                        uint16_t color, bool eyes_left) {
+    uint16_t r = w / 2, bh = h - 4;
+    display_draw_filled_circle(x + r, y + r, r, color);
+    display_fill_rect(x, y + r, w, bh - r + 1, color);
+    uint16_t sy = y + bh, ww = w / 3;
     for (int i = 0; i < 3; i++)
-        display_draw_filled_circle(dev, x + i * ww + ww / 2, sy + 2, ww / 2, color);
-    uint16_t ey = y + r - 2;
-    uint16_t lex = x + r - 3, rex = x + r + 3;
-    display_draw_filled_circle(dev, lex, ey, 3, COLOR_WHITE);
-    display_draw_filled_circle(dev, rex, ey, 3, COLOR_WHITE);
+        display_draw_filled_circle(x + i * ww + ww / 2, sy + 2, ww / 2, color);
+    uint16_t ey = y + r - 2, lex = x + r - 3, rex = x + r + 3;
+    display_draw_filled_circle(lex, ey, 3, COLOR_WHITE);
+    display_draw_filled_circle(rex, ey, 3, COLOR_WHITE);
     uint16_t po = eyes_left ? -1 : 1;
-    display_draw_filled_circle(dev, lex + po, ey, 1, COLOR_BLUE);
-    display_draw_filled_circle(dev, rex + po, ey, 1, COLOR_BLUE);
+    display_draw_filled_circle(lex + po, ey, 1, COLOR_BLUE);
+    display_draw_filled_circle(rex + po, ey, 1, COLOR_BLUE);
 }
 
-void display_draw_dot(const struct device *dev, uint16_t cx, uint16_t cy,
-                      uint8_t radius, uint16_t color) {
-    display_draw_filled_circle(dev, cx, cy, radius, color);
+void display_draw_dot(uint16_t cx, uint16_t cy, uint8_t r, uint16_t color) {
+    display_draw_filled_circle(cx, cy, r, color);
 }
 
-void display_draw_power_pellet(const struct device *dev, uint16_t cx, uint16_t cy,
-                               uint8_t radius, uint16_t color, bool blink) {
-    if (blink)
-        display_draw_circle(dev, cx, cy, radius, color);
-    else
-        display_draw_filled_circle(dev, cx, cy, radius, color);
+void display_draw_power_pellet(uint16_t cx, uint16_t cy, uint8_t r,
+                               uint16_t color, bool blink) {
+    if (blink) display_draw_circle(cx, cy, r, color);
+    else       display_draw_filled_circle(cx, cy, r, color);
 }
 
-/* ---- Init ---- */
+/* ---- Flush framebuffer to display ---- */
 
-static int display_helpers_init(void) {
-    lvgl_display = lv_display_get_default();
-    if (lvgl_display == NULL) {
-        LOG_ERR("No default LVGL display found");
-        return -ENODEV;
-    }
-    LOG_INF("Display helpers ready (%dx%d), bitmap font renderer", DISPLAY_W, DISPLAY_H);
-    return 0;
+void display_flush(void) {
+    /* Create an LVGL image descriptor pointing to our framebuffer */
+    static lv_image_dsc_t img_dsc;
+    img_dsc.header.magic = LV_IMAGE_HEADER_MAGIC;
+    img_dsc.header.cf    = LV_COLOR_FORMAT_RGB565;
+    img_dsc.header.w     = DISPLAY_W;
+    img_dsc.header.h     = DISPLAY_H;
+    img_dsc.header.stride = DISPLAY_W * 2;
+    img_dsc.data_size    = sizeof(fb);
+    img_dsc.data         = fb;
+
+    lv_obj_t *img = lv_image_create(lv_layer_top());
+    lv_image_set_src(img, &img_dsc);
+    lv_obj_set_pos(img, 0, 0);
+
+    lv_refr_now(lvgl_display);
+    lv_obj_delete(img);
 }
-
-SYS_INIT(display_helpers_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);

@@ -1,10 +1,13 @@
 # Pacman Dongle Adapter Shield - Default Kconfig
 
-config DISPLAY
+config ZMK_DISPLAY
   default y
 
-config DISPLAY_LOG_LEVEL
-  default 0
+config ZMK_DISPLAY_STATUS_SCREEN_CUSTOM
+  default y
+
+config DISPLAY
+  default y
 
 config LVGL
   default y
@@ -34,10 +37,4 @@ config ZMK_DONGLE_PACMAN
   default y
 
 config ZMK_DONGLE_ACTION
-  default y
-
-config DISPLAY_LOG_LEVEL_DBG
-  default n
-
-config DISPLAY_LOG_LEVEL_INF
   default y

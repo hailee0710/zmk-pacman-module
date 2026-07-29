@@ -1,6 +1,6 @@
 name: pacman-module
 build:
-  cmake: .
-  kconfig: Kconfig
+  cmake: zmk-pacman-module
+  kconfig: zmk-pacman-module/Kconfig
   depends:
     - zmk

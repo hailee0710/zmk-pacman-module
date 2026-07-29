@@ -1,0 +1,28 @@
+# Copyright (c) 2024
+# SPDX-License-Identifier: MIT
+
+description: Dongle Action Behavior — dispatches Pacman display actions
+
+compatible: "zmk,behavior-dongle-action"
+
+include: base.yaml
+
+properties:
+  label:
+    type: string
+    required: true
+  action:
+    type: string
+    required: true
+    enum:
+      - "pacman-up"
+      - "pacman-down"
+      - "pacman-left"
+      - "pacman-right"
+      - "pacman-start"
+      - "pacman-pause"
+      - "pacman-quit"
+  "#binding-cells":
+    type: int
+    required: true
+    const: 0

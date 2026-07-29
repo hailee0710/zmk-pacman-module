@@ -9,15 +9,16 @@
 #include "logo.h"
 #include "helpers/display.h"
 
-static bool visible = false;
+static bool visible;
 
 void logo_init(void) { visible = false; }
 
 void logo_draw(const struct device *dev) {
-    display_fill(dev, COLOR_BLACK);
-    display_write_text(dev, 70, 50, "PACMAN", COLOR_PACMAN_YELLOW, COLOR_BLACK, 2);
-    display_write_text(dev, 80, 90, "DONGLE", COLOR_WHITE, COLOR_BLACK, 1);
-    display_draw_filled_circle(dev, 160, 140, 24, COLOR_PACMAN_YELLOW);
+    display_fill(COLOR_BLACK);
+    display_write_text(70, 50, "PACMAN", COLOR_PACMAN_YELLOW, COLOR_BLACK, 2);
+    display_write_text(80, 90, "DONGLE", COLOR_WHITE, COLOR_BLACK, 1);
+    display_draw_filled_circle(160, 140, 24, COLOR_PACMAN_YELLOW);
+    display_flush();
     visible = true;
 }
 
