@@ -7,7 +7,6 @@
 #include <zephyr/logging/log.h>
 
 #include <zmk/behavior.h>
-#include <zmk/events/keycode_state_changed.h>
 
 #include <zmk_dongle_events/dongle_action_event.h>
 
@@ -15,10 +14,6 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
 static int behavior_dongle_action_init(const struct device *dev) {
     return 0;
-}
-
-static int on_keycode_state_changed(struct zmk_keycode_state_changed *ev) {
-    return ZMK_EV_EVENT_BUBBLE;
 }
 
 static int behavior_dongle_action_keymap_binding_pressed(struct zmk_behavior_binding *binding,

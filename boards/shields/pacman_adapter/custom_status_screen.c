@@ -20,6 +20,7 @@
 #include <zmk/events/keycode_state_changed.h>
 #include <zmk/endpoints.h>
 #include <zmk/keymap.h>
+#include <zmk_dongle_events/dongle_action_event.h>
 
 #include "custom_status_screen.h"
 #include "widgets/pacman.h"
@@ -31,7 +32,7 @@
 
 LOG_MODULE_REGISTER(custom_status, CONFIG_DISPLAY_LOG_LEVEL);
 
-K_THREAD_STACK_DEFINE(render_stack, 1024);
+K_THREAD_STACK_DEFINE(render_stack, 4096);
 static struct k_work_q render_workq;
 
 static pacman_status_t pacman_st;
@@ -51,7 +52,10 @@ static void render_work_handler(struct k_work *work) {
     wpm_tick(&wpm_st);
     pacman_status_set_wpm(&pacman_st, wpm_get_current(&wpm_st));
     pacman_status_tick(&pacman_st);
-    pacman_status_render(&pacman_st);
+    /* Only render if something changed */
+    if (pacman_st.dirty) {
+        pacman_status_render(&pacman_st);
+    }
 }
 
 static K_WORK_DEFINE(render_work, render_work_handler);
@@ -66,7 +70,12 @@ K_TIMER_DEFINE(tick_timer, tick_timer_handler, NULL);
 /* ---- ZMK event handlers ---- */
 
 static int ble_handler(const zmk_event_t *eh) {
-    pacman_status_set_host_connection(&pacman_st, true, 2);
+    const struct zmk_ble_active_profile_changed *ev = as_zmk_ble_active_profile_changed(eh);
+    if (ev) {
+        /* profile_index of 0xFF means disconnected; anything else is connected */
+        bool connected = (ev->profile_index != 0xFF);
+        pacman_status_set_host_connection(&pacman_st, connected, 2);
+    }
     return ZMK_EV_EVENT_BUBBLE;
 }
 
@@ -97,6 +106,38 @@ static int keycode_handler(const zmk_event_t *eh) {
     return ZMK_EV_EVENT_BUBBLE;
 }
 
+static int dongle_action_handler(const zmk_event_t *eh) {
+    const struct zmk_dongle_action_event *ev = as_zmk_dongle_action_event(eh);
+    if (!ev) return ZMK_EV_EVENT_BUBBLE;
+
+    LOG_DBG("Dongle action received: %d", ev->action);
+
+    switch (ev->action) {
+    case DONGLE_ACTION_PACMAN_UP:
+        /* Reserved for future game navigation */
+        break;
+    case DONGLE_ACTION_PACMAN_DOWN:
+        break;
+    case DONGLE_ACTION_PACMAN_LEFT:
+        break;
+    case DONGLE_ACTION_PACMAN_RIGHT:
+        break;
+    case DONGLE_ACTION_PACMAN_START:
+        /* Start/restart game or animation */
+        break;
+    case DONGLE_ACTION_PACMAN_PAUSE:
+        /* Toggle pause */
+        break;
+    case DONGLE_ACTION_PACMAN_QUIT:
+        /* Quit to status screen */
+        break;
+    default:
+        break;
+    }
+
+    return ZMK_EV_EVENT_BUBBLE;
+}
+
 ZMK_LISTENER(cs_ble, ble_handler);
 ZMK_SUBSCRIPTION(cs_ble, zmk_ble_active_profile_changed);
 ZMK_LISTENER(cs_usb, usb_handler);
@@ -107,6 +148,8 @@ ZMK_LISTENER(cs_layer, layer_handler);
 ZMK_SUBSCRIPTION(cs_layer, zmk_layer_state_changed);
 ZMK_LISTENER(cs_key, keycode_handler);
 ZMK_SUBSCRIPTION(cs_key, zmk_keycode_state_changed);
+ZMK_LISTENER(cs_dongle_action, dongle_action_handler);
+ZMK_SUBSCRIPTION(cs_dongle_action, zmk_dongle_action_event);
 
 /* ---- Public API ---- */
 

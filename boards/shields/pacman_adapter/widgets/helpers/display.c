@@ -12,7 +12,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <string.h>
-#include <math.h>
+
 #include <lvgl.h>
 
 #include "display.h"
@@ -24,6 +24,7 @@ LOG_MODULE_REGISTER(display_helpers, CONFIG_DISPLAY_LOG_LEVEL);
 static uint16_t fb[DISPLAY_W * DISPLAY_H];
 static const struct device *disp_dev;
 static lv_display_t *lvgl_display;
+static lv_obj_t *flush_img;
 
 /* ---- Internal: fast horizontal line in framebuffer ---- */
 static inline void fb_hline(uint16_t x, uint16_t y, uint16_t w, uint16_t color) {
@@ -47,6 +48,8 @@ int display_init(const struct device *dev) {
         return -ENODEV;
     }
     memset(fb, 0, sizeof(fb));
+    flush_img = lv_image_create(lv_layer_top());
+    lv_obj_set_pos(flush_img, 0, 0);
     LOG_INF("Framebuffer ready (%dx%d, %u bytes)", DISPLAY_W, DISPLAY_H, (unsigned)sizeof(fb));
     return 0;
 }
@@ -156,18 +159,61 @@ void display_write_text(uint16_t x, uint16_t y, const char *text,
 
 /* ---- Pacman / Ghost / Dot ---- */
 
+/* Integer sin LUT: sin(0°..90°) scaled by 256 */
+static const int16_t sin_lut[91] = {
+    0,4,8,13,17,22,26,31,35,39,44,48,52,56,60,64,68,72,76,80,
+    83,87,90,94,97,100,103,106,109,112,114,117,119,121,123,125,
+    127,129,130,131,132,133,134,134,135,135,135,135,135,134,134,
+    133,132,131,130,129,127,125,123,121,119,117,114,112,109,106,
+    103,100,97,94,90,87,83,80,76,72,68,64,60,56,52,48,44,39,35,
+    31,26,22,17,13,8,4
+};
+
+/* Get sin(deg) scaled by 256 for any integer degree 0..359 */
+static inline int16_t isin(int16_t d) {
+    d = d % 360; if (d < 0) d += 360;
+    return (d <= 90)  ? sin_lut[d] :
+           (d <= 180) ? sin_lut[180 - d] :
+           (d <= 270) ? -sin_lut[d - 180] : -sin_lut[360 - d];
+}
+
+/* Get cos(deg) scaled by 256 for any integer degree 0..359 */
+static inline int16_t icos(int16_t d) { return isin(d + 90); }
+
+/* Draw a filled circular arc from start_angle to end_angle (degrees, 0-359).
+   Uses integer arithmetic only (cross products + LUT for sin/cos). */
 static void fb_filled_arc(uint16_t cx, uint16_t cy, uint16_t r,
                            int16_t sa, int16_t ea, uint16_t color) {
+    /* Normalize angles to 0..359 */
     while (sa < 0) sa += 360; while (sa >= 360) sa -= 360;
     while (ea < 0) ea += 360; while (ea >= 360) ea -= 360;
-    for (int16_t dy = -(int16_t)r; dy <= (int16_t)r; dy++) {
-        for (int16_t dx = -(int16_t)r; dx <= (int16_t)r; dx++) {
-            if (dx * dx + dy * dy <= (int16_t)(r * r)) {
-                int16_t a = (int16_t)(atan2f((float)dy, (float)dx) * 180.0f / 3.14159265f);
-                if (a < 0) a += 360;
-                bool in = (sa <= ea) ? (a >= sa && a <= ea) : (a >= sa || a <= ea);
-                if (in) fb_pixel(cx + dx, cy + dy, color);
+
+    /* Direction vectors (scaled by 256) for the two bounding rays */
+    int16_t sx = icos(sa), sy = isin(sa); /* start ray (counter-clockwise edge) */
+    int16_t ex = icos(ea), ey = isin(ea); /* end ray (clockwise edge) */
+
+    int16_t ir = (int16_t)r;
+    for (int16_t dy = -ir; dy <= ir; dy++) {
+        for (int16_t dx = -ir; dx <= ir; dx++) {
+            /* Skip pixels outside the circle */
+            if ((int32_t)dx * dx + (int32_t)dy * dy > (int32_t)ir * ir) continue;
+
+            /* Cross products determine which side of each bounding ray the point is on.
+               cross > 0 means counter-clockwise from the ray, cross < 0 means clockwise.
+               The arc sweeps from sa (CCW edge) to ea (CW edge).
+               A point is inside if it's clockwise from sa AND counter-clockwise from ea. */
+            int32_t cross_s = (int32_t)sx * dy - (int32_t)sy * dx; /* positive = CCW of start */
+            int32_t cross_e = (int32_t)ex * dy - (int32_t)ey * dx; /* positive = CCW of end */
+
+            /* Inside arc if: cross_s >= 0 (on or CCW of start) AND cross_e <= 0 (on or CW of end) */
+            /* For wrap-around arcs (sa > ea), the condition is a logical OR instead */
+            bool inside;
+            if (sa <= ea) {
+                inside = (cross_s >= 0 && cross_e <= 0);
+            } else {
+                inside = (cross_s >= 0 || cross_e <= 0);
             }
+            if (inside) fb_pixel(cx + dx, cy + dy, color);
         }
     }
 }
@@ -217,7 +263,6 @@ void display_draw_power_pellet(uint16_t cx, uint16_t cy, uint8_t r,
 /* ---- Flush framebuffer to display ---- */
 
 void display_flush(void) {
-    /* Create an LVGL image descriptor pointing to our framebuffer */
     static lv_image_dsc_t img_dsc;
     img_dsc.header.magic = LV_IMAGE_HEADER_MAGIC;
     img_dsc.header.cf    = LV_COLOR_FORMAT_RGB565;
@@ -227,10 +272,6 @@ void display_flush(void) {
     img_dsc.data_size    = sizeof(fb);
     img_dsc.data         = fb;
 
-    lv_obj_t *img = lv_image_create(lv_layer_top());
-    lv_image_set_src(img, &img_dsc);
-    lv_obj_set_pos(img, 0, 0);
-
+    lv_image_set_src(flush_img, &img_dsc);
     lv_refr_now(lvgl_display);
-    lv_obj_delete(img);
 }

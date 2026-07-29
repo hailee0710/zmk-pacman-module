@@ -35,52 +35,15 @@ Character char_to_enum(char ch);
 
 #define FONT_3x5_W 3
 #define FONT_3x5_H 5
+/* Digit bitmaps — access via get_bitmap_3x5() below */
 extern const uint16_t *num_bitmaps_3x5[10];
-extern const uint16_t *letter_bitmaps_3x5[26];
-extern const uint16_t colon_letter_3x5[15];
-extern const uint16_t dash_letter_3x5[15];
-extern const uint16_t percentage_letter_3x5[15];
-extern const uint16_t none_letter_3x5[15];
 
 /* ---- 5×7 font (digits 0-9, letters used for labels) ---- */
 
 #define FONT_5x7_W 5
 #define FONT_5x7_H 7
+/* Letter/digit bitmaps — access via get_bitmap_5x7() / get_bitmap_3x5() below */
 extern const uint16_t *num_bitmaps_5x7[10];
-
-/* Individual letter bitmaps (5x7) */
-extern const uint16_t a_letter_5x7[35];
-extern const uint16_t b_letter_5x7[35];
-extern const uint16_t c_letter_5x7[35];
-extern const uint16_t d_letter_5x7[35];
-extern const uint16_t e_letter_5x7[35];
-extern const uint16_t f_letter_5x7[35];
-extern const uint16_t g_letter_5x7[35];
-extern const uint16_t h_letter_5x7[35];
-extern const uint16_t i_letter_5x7[35];
-extern const uint16_t j_letter_5x7[35];
-extern const uint16_t k_letter_5x7[35];
-extern const uint16_t l_letter_5x7[35];
-extern const uint16_t m_letter_5x7[35];
-extern const uint16_t n_letter_5x7[35];
-extern const uint16_t o_letter_5x7[35];
-extern const uint16_t p_letter_5x7[35];
-extern const uint16_t q_letter_5x7[35];
-extern const uint16_t r_letter_5x7[35];
-extern const uint16_t s_letter_5x7[35];
-extern const uint16_t t_letter_5x7[35];
-extern const uint16_t u_letter_5x7[35];
-extern const uint16_t v_letter_5x7[35];
-extern const uint16_t w_letter_5x7[35];
-extern const uint16_t x_letter_5x7[35];
-extern const uint16_t y_letter_5x7[35];
-extern const uint16_t z_letter_5x7[35];
-
-extern const uint16_t colon_bitmap_5x7[35];
-extern const uint16_t dash_bitmap_5x7[35];
-extern const uint16_t percentage_bitmap_5x7[35];
-extern const uint16_t empty_bitmap_5x7[35];
-extern const uint16_t none_bitmap_5x7[35];
 
 /* Lookup: given a Character enum, return the 5x7 bitmap */
 const uint16_t *get_bitmap_5x7(Character c);

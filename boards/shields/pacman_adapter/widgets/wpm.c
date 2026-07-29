@@ -35,17 +35,10 @@ void wpm_tick(wpm_state_t *st) {
     }
 
     /* Convert to WPM: (keys / chars_per_word) * (60000 / window_ms) */
-    if (recent_keys > 0) {
-        uint16_t wpm = (uint16_t)((uint32_t)recent_keys * 60000 /
-                                   (WPM_CHARS_PER_WORD * WPM_WINDOW_MS));
-        if (wpm > 255) wpm = 255;
-        st->current_wpm = (uint8_t)wpm;
-    } else {
-        /* Decay WPM when no typing */
-        if (st->current_wpm > 0) {
-            st->current_wpm--;
-        }
-    }
+    uint16_t wpm = (uint16_t)((uint32_t)recent_keys * 60000 /
+                               (WPM_CHARS_PER_WORD * WPM_WINDOW_MS));
+    if (wpm > 255) wpm = 255;
+    st->current_wpm = (uint8_t)wpm;
 
     if (st->current_wpm > st->peak_wpm) {
         st->peak_wpm = st->current_wpm;

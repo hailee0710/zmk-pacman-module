@@ -6,14 +6,4 @@ config ZMK_DONGLE_PACMAN_BUZZER
   help
     Enable buzzer support on the dongle.
 
-config ZMK_DONGLE_PACMAN_INVERT_DISPLAY_ROTATION
-  bool "Invert display rotation"
-  default n
-  help
-    Invert the display rotation for alternate mounting orientations.
 
-config ZMK_DONGLE_PACMAN_ENCODER
-  bool "Encoder support"
-  default n
-  help
-    Enable rotary encoder support for menu navigation.

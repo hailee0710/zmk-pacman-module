@@ -7,6 +7,17 @@
 
 #include <zmk/events/event.h>
 
+/* Dongle action IDs — passed via binding->param1 in devicetree */
+enum {
+    DONGLE_ACTION_PACMAN_UP    = 0,
+    DONGLE_ACTION_PACMAN_DOWN  = 1,
+    DONGLE_ACTION_PACMAN_LEFT  = 2,
+    DONGLE_ACTION_PACMAN_RIGHT = 3,
+    DONGLE_ACTION_PACMAN_START = 4,
+    DONGLE_ACTION_PACMAN_PAUSE = 5,
+    DONGLE_ACTION_PACMAN_QUIT  = 6,
+};
+
 struct zmk_dongle_action_event {
     struct zmk_event header;
     uint8_t action;

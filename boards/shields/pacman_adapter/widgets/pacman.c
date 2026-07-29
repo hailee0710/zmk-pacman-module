@@ -105,14 +105,20 @@ void pacman_status_tick(pacman_status_t *st) {
     if (!st->initialized) return;
     st->anim_tick++;
 
+    static uint8_t prev_mouth = 0xFF;
+    static uint8_t last_wpm = 0xFF;
+
     /* Mouth */
     st->mouth_frame += st->mouth_delta;
     if (st->mouth_frame >= 3) { st->mouth_frame = 3; st->mouth_delta = -1; }
     else if (st->mouth_frame <= 0) { st->mouth_frame = 0; st->mouth_delta = 1; }
 
+    bool any_dot_active = false;
+
     /* Move dots */
     for (int i = 0; i < DOT_MAX_COUNT; i++) {
         if (!st->dots[i].active) continue;
+        any_dot_active = true;
         pacman_dot_t *d = &st->dots[i];
         d->x -= d->speed;
         if (d->x <= DOT_EAT_X) {
@@ -123,6 +129,7 @@ void pacman_status_tick(pacman_status_t *st) {
     }
 
     /* Effect timer */
+    bool effect_was_active = st->effect_active;
     if (st->effect_active) {
         st->effect_timer--;
         st->effect_phase = (st->effect_timer / 10) % 3;
@@ -130,7 +137,17 @@ void pacman_status_tick(pacman_status_t *st) {
     }
 
     if (st->current_wpm > st->peak_wpm) st->peak_wpm = st->current_wpm;
-    st->dirty = true;
+
+    /* Only mark dirty if something actually changed */
+    if (any_dot_active ||
+        st->mouth_frame != prev_mouth ||
+        st->effect_active || effect_was_active ||
+        st->current_wpm != last_wpm) {
+        st->dirty = true;
+    }
+
+    prev_mouth = st->mouth_frame;
+    last_wpm = st->current_wpm;
 }
 
 /* ---- Rendering ---- */
