@@ -5,6 +5,7 @@
  * Pacman Status Widget — landscape 320×172
  *
  * Each dot = one keypress. Ghost if WPM ≥ 80.
+ * Single-row horizontal dot flow toward big, stationary Pacman.
  * All drawing goes through framebuffer; single flush per frame.
  */
 
@@ -66,14 +67,6 @@ static void spawn(pacman_status_t *st) {
     d->speed    = wpm_to_speed(st->current_wpm);
 }
 
-static void effect(pacman_status_t *st) {
-    st->effect_active = true;
-    st->effect_timer  = EFFECT_DURATION;
-    st->effect_phase  = 0;
-    st->ghosts_eaten++;
-    st->score += 200;
-}
-
 /* ---- Public API ---- */
 
 void pacman_status_init(pacman_status_t *st, const struct device *dev) {
@@ -108,7 +101,7 @@ void pacman_status_tick(pacman_status_t *st) {
     static uint8_t prev_mouth = 0xFF;
     static uint8_t last_wpm = 0xFF;
 
-    /* Mouth */
+    /* Mouth animation */
     st->mouth_frame += st->mouth_delta;
     if (st->mouth_frame >= 3) { st->mouth_frame = 3; st->mouth_delta = -1; }
     else if (st->mouth_frame <= 0) { st->mouth_frame = 0; st->mouth_delta = 1; }
@@ -122,18 +115,8 @@ void pacman_status_tick(pacman_status_t *st) {
         pacman_dot_t *d = &st->dots[i];
         d->x -= d->speed;
         if (d->x <= DOT_EAT_X) {
-            if (d->is_ghost) effect(st);
-            else { st->dots_eaten++; st->score += 10; }
             d->active = false;
         }
-    }
-
-    /* Effect timer */
-    bool effect_was_active = st->effect_active;
-    if (st->effect_active) {
-        st->effect_timer--;
-        st->effect_phase = (st->effect_timer / 10) % 3;
-        if (st->effect_timer == 0) st->effect_active = false;
     }
 
     if (st->current_wpm > st->peak_wpm) st->peak_wpm = st->current_wpm;
@@ -141,7 +124,6 @@ void pacman_status_tick(pacman_status_t *st) {
     /* Only mark dirty if something actually changed */
     if (any_dot_active ||
         st->mouth_frame != prev_mouth ||
-        st->effect_active || effect_was_active ||
         st->current_wpm != last_wpm) {
         st->dirty = true;
     }
@@ -187,10 +169,10 @@ static void render_top_bar(pacman_status_t *st) {
 static void render_zone(pacman_status_t *st) {
     display_fill_rect(0, MAIN_ZONE_Y, SCREEN_W, MAIN_ZONE_H, COLOR_BLACK);
 
-    /* Guide line */
-    display_draw_line(DOT_EAT_X + 10, MAIN_ZONE_CY, DOT_SPAWN_X - 10, MAIN_ZONE_CY, COLOR_DARK_GRAY);
+    /* Guide line — start at Pacman's mouth edge, end at dot spawn area */
+    display_draw_line(DOT_EAT_X + 5, MAIN_ZONE_CY, DOT_SPAWN_X - 10, MAIN_ZONE_CY, COLOR_DARK_GRAY);
 
-    /* Dots + ghosts */
+    /* Dots + ghosts flowing right-to-left */
     for (int i = 0; i < DOT_MAX_COUNT; i++) {
         if (!st->dots[i].active) continue;
         pacman_dot_t *d = &st->dots[i];
@@ -201,20 +183,7 @@ static void render_zone(pacman_status_t *st) {
             display_draw_dot(d->x, DOT_Y, DOT_RADIUS, COLOR_DOT_WHITE);
     }
 
-    /* Effect halo */
-    if (st->effect_active) {
-        uint16_t flash;
-        switch (st->effect_phase) {
-            case 0: flash = COLOR_GHOST_RED;    break;
-            case 1: flash = COLOR_PACMAN_YELLOW; break;
-            default:flash = COLOR_GHOST_CYAN;   break;
-        }
-        display_draw_circle(PACMAN_CX, PACMAN_CY, PACMAN_RADIUS + 12 + (st->effect_timer % 8), flash);
-        if (st->effect_timer > EFFECT_DURATION / 2)
-            display_write_text(PACMAN_CX + 48, PACMAN_CY - 10, "POWER!", COLOR_GHOST_RED, COLOR_BLACK, 1);
-    }
-
-    /* Pacman */
+    /* Big Pacman */
     display_draw_pacman(PACMAN_CX, PACMAN_CY, PACMAN_RADIUS, DIR_RIGHT, st->mouth_frame,
                         COLOR_PACMAN_YELLOW);
 
@@ -226,7 +195,7 @@ static void render_bottom_bar(pacman_status_t *st) {
     display_fill_rect(0, BOTTOM_BAR_Y, SCREEN_W, BOTTOM_BAR_H, COLOR_BLACK);
 
     /* WPM bar */
-    uint16_t bx = 4, by = BOTTOM_BAR_Y + 5, bw = 160, bh = 10;
+    uint16_t bx = 4, by = BOTTOM_BAR_Y + 5, bw = 200, bh = 10;
     display_draw_rect(bx, by, bw + 1, bh + 1, COLOR_DARK_GRAY);
 
     uint16_t wpm = (st->current_wpm > 120) ? 120 : st->current_wpm;
@@ -236,22 +205,17 @@ static void render_bottom_bar(pacman_status_t *st) {
                 :                                COLOR_GREEN;
     if (fw > 0) display_fill_rect(bx + 1, by + 1, fw, bh - 1, fc);
 
+    /* Ghost threshold marker */
     uint16_t mk = bx + (uint16_t)bw * WPM_GHOST_THRESHOLD / 120;
     display_draw_line(mk, by - 2, mk, by + bh + 2, COLOR_GHOST_RED);
     snprintf(buf, sizeof(buf), "%u", WPM_GHOST_THRESHOLD);
     display_write_text(mk - 10, BOTTOM_BAR_Y + 16, buf, COLOR_GHOST_RED, COLOR_BLACK, 1);
 
-    /* Stats */
-    snprintf(buf, sizeof(buf), "G:%u", st->ghosts_eaten);
-    display_write_text(172, BOTTOM_BAR_Y + 1, buf, COLOR_GHOST_RED, COLOR_BLACK, 1);
-    snprintf(buf, sizeof(buf), "D:%u", st->dots_eaten);
-    display_write_text(210, BOTTOM_BAR_Y + 1, buf, COLOR_DOT_WHITE, COLOR_BLACK, 1);
-    snprintf(buf, sizeof(buf), "SCORE:%u", st->score);
-    display_write_text(172, BOTTOM_BAR_Y + 12, buf, COLOR_PACMAN_YELLOW, COLOR_BLACK, 1);
+    /* WPM readout */
     snprintf(buf, sizeof(buf), "WPM:%u", st->current_wpm);
-    display_write_text(258, BOTTOM_BAR_Y + 1, buf, COLOR_WHITE, COLOR_BLACK, 1);
+    display_write_text(212, BOTTOM_BAR_Y + 1, buf, COLOR_WHITE, COLOR_BLACK, 1);
     snprintf(buf, sizeof(buf), "PEAK:%u", st->peak_wpm);
-    display_write_text(258, BOTTOM_BAR_Y + 12, buf, COLOR_GRAY, COLOR_BLACK, 1);
+    display_write_text(212, BOTTOM_BAR_Y + 12, buf, COLOR_GRAY, COLOR_BLACK, 1);
 }
 
 void pacman_status_render(pacman_status_t *st) {

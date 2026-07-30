@@ -20,7 +20,6 @@
 #include <zmk/events/keycode_state_changed.h>
 #include <zmk/endpoints.h>
 #include <zmk/keymap.h>
-#include <zmk_dongle_events/dongle_action_event.h>
 
 #include "custom_status_screen.h"
 #include "widgets/pacman.h"
@@ -106,38 +105,6 @@ static int keycode_handler(const zmk_event_t *eh) {
     return ZMK_EV_EVENT_BUBBLE;
 }
 
-static int dongle_action_handler(const zmk_event_t *eh) {
-    const struct zmk_dongle_action_event *ev = as_zmk_dongle_action_event(eh);
-    if (!ev) return ZMK_EV_EVENT_BUBBLE;
-
-    LOG_DBG("Dongle action received: %d", ev->action);
-
-    switch (ev->action) {
-    case DONGLE_ACTION_PACMAN_UP:
-        /* Reserved for future game navigation */
-        break;
-    case DONGLE_ACTION_PACMAN_DOWN:
-        break;
-    case DONGLE_ACTION_PACMAN_LEFT:
-        break;
-    case DONGLE_ACTION_PACMAN_RIGHT:
-        break;
-    case DONGLE_ACTION_PACMAN_START:
-        /* Start/restart game or animation */
-        break;
-    case DONGLE_ACTION_PACMAN_PAUSE:
-        /* Toggle pause */
-        break;
-    case DONGLE_ACTION_PACMAN_QUIT:
-        /* Quit to status screen */
-        break;
-    default:
-        break;
-    }
-
-    return ZMK_EV_EVENT_BUBBLE;
-}
-
 ZMK_LISTENER(cs_ble, ble_handler);
 ZMK_SUBSCRIPTION(cs_ble, zmk_ble_active_profile_changed);
 ZMK_LISTENER(cs_usb, usb_handler);
@@ -148,8 +115,6 @@ ZMK_LISTENER(cs_layer, layer_handler);
 ZMK_SUBSCRIPTION(cs_layer, zmk_layer_state_changed);
 ZMK_LISTENER(cs_key, keycode_handler);
 ZMK_SUBSCRIPTION(cs_key, zmk_keycode_state_changed);
-ZMK_LISTENER(cs_dongle_action, dongle_action_handler);
-ZMK_SUBSCRIPTION(cs_dongle_action, zmk_dongle_action_event);
 
 /* ---- Public API ---- */
 

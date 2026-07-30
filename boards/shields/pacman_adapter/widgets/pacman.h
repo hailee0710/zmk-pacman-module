@@ -5,7 +5,7 @@
  * Pacman Status Widget — landscape 320×172
  *
  * Each dot = one keypress. Ghost if WPM ≥ 80.
- * Single-row horizontal dot flow toward stationary Pacman.
+ * Single-row horizontal dot flow toward big, stationary Pacman.
  */
 
 #pragma once
@@ -27,14 +27,15 @@
 #define BOTTOM_BAR_Y  148
 #define BOTTOM_BAR_H  24
 
-#define PACMAN_CX      75
+/* Big Pacman — nearly fills the main zone height */
+#define PACMAN_CX      80
 #define PACMAN_CY      MAIN_ZONE_CY
-#define PACMAN_RADIUS  40
-#define PACMAN_MOUTH_X (PACMAN_CX - PACMAN_RADIUS)  /* 35 */
+#define PACMAN_RADIUS  52
+#define PACMAN_MOUTH_X (PACMAN_CX - PACMAN_RADIUS)  /* 28 */
 
 #define DOT_RADIUS      4
 #define DOT_Y           MAIN_ZONE_CY
-#define DOT_SPAWN_X     305
+#define DOT_SPAWN_X     310
 #define DOT_EAT_X       PACMAN_MOUTH_X
 #define DOT_MAX_COUNT   20
 
@@ -44,8 +45,6 @@
 #define DOT_SPEED_MIN       1
 #define DOT_SPEED_MAX       5
 #define WPM_GHOST_THRESHOLD 80
-
-#define EFFECT_DURATION 30
 
 typedef struct {
     int16_t  x;
@@ -60,14 +59,6 @@ typedef struct {
     uint16_t anim_tick;
 
     pacman_dot_t dots[DOT_MAX_COUNT];
-
-    bool     effect_active;
-    uint16_t effect_timer;
-    uint8_t  effect_phase;
-
-    uint16_t dots_eaten;
-    uint16_t ghosts_eaten;
-    uint16_t score;
 
     uint8_t  current_wpm;
     uint8_t  peak_wpm;
