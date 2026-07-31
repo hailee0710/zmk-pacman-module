@@ -1,5 +1,8 @@
 # Pacman Dongle Adapter Shield Kconfig
 
+config SHIELD_PACMAN_ADAPTER
+  def_bool $(shields_list_contains,pacman_adapter)
+
 config ZMK_DONGLE_PACMAN_BUZZER
   bool "Buzzer support"
   default n

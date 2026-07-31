@@ -73,7 +73,9 @@ struct st7789p3_config {
 };
 
 struct st7789p3_data {
-    lv_display_t *display;
+    lv_disp_t *display;
+    lv_disp_drv_t disp_drv;
+    lv_disp_draw_buf_t draw_buf;
 };
 
 /* Send command byte */
@@ -205,9 +207,9 @@ static void st7789p3_init_seq(const struct device *dev) {
 }
 
 /* LVGL flush callback */
-static void st7789p3_flush_cb(lv_display_t *display, const lv_area_t *area,
-                               uint8_t *color_p) {
-    const struct device *dev = lv_display_get_user_data(display);
+static void st7789p3_flush_cb(lv_disp_drv_t *disp_drv, const lv_area_t *area,
+                               lv_color_t *color_p) {
+    const struct device *dev = disp_drv->user_data;
     uint16_t w = area->x2 - area->x1 + 1;
     uint16_t h = area->y2 - area->y1 + 1;
 
@@ -222,7 +224,7 @@ static void st7789p3_flush_cb(lv_display_t *display, const lv_area_t *area,
         st7789p3_write_data(dev, swapped, 2);
     }
 
-    lv_display_flush_ready(display);
+    lv_disp_flush_ready(disp_drv);
 }
 
 /* Init */
@@ -243,16 +245,19 @@ static int st7789p3_init(const struct device *dev) {
 
     /* Register LVGL display */
     struct st7789p3_data *data = dev->data;
-    data->display = lv_display_create(config->width, config->height);
-    if (!data->display) { LOG_ERR("LVGL display create failed"); return -ENOMEM; }
-
-    lv_display_set_user_data(data->display, (void *)dev);
-    lv_display_set_flush_cb(data->display, st7789p3_flush_cb);
-    lv_display_set_color_format(data->display, LV_COLOR_FORMAT_RGB565);
 
     static lv_color_t buf1[ST7789_WIDTH * 20];
-    lv_display_set_buffers(data->display, buf1, NULL, sizeof(buf1),
-                           LV_DISPLAY_RENDER_MODE_PARTIAL);
+    lv_disp_draw_buf_init(&data->draw_buf, buf1, NULL, ST7789_WIDTH * 20);
+
+    lv_disp_drv_init(&data->disp_drv);
+    data->disp_drv.hor_res = config->width;
+    data->disp_drv.ver_res = config->height;
+    data->disp_drv.flush_cb = st7789p3_flush_cb;
+    data->disp_drv.draw_buf = &data->draw_buf;
+    data->disp_drv.user_data = (void *)dev;
+
+    data->display = lv_disp_drv_register(&data->disp_drv);
+    if (!data->display) { LOG_ERR("LVGL display register failed"); return -ENOMEM; }
 
     LOG_INF("ST7789P3 landscape ready");
     return 0;

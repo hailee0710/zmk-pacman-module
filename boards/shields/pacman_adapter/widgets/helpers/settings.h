@@ -10,9 +10,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-void settings_init(void);
-bool settings_load(void);
-bool settings_save(void);
+void pacman_settings_init(void);
+bool pacman_settings_load(void);
+bool pacman_settings_save(void);
 
 /* Theme settings */
 void settings_set_theme(uint8_t theme);

@@ -7,4 +7,5 @@ if(CONFIG_ZMK_DONGLE_PACMAN)
 
   add_subdirectory(src/events)
   add_subdirectory_ifdef(CONFIG_ZMK_DONGLE_ACTION src/behaviors)
+  add_subdirectory(drivers/display)
 endif()

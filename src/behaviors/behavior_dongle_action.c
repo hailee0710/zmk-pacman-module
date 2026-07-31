@@ -3,9 +3,12 @@
  * SPDX-License-Identifier: MIT
  */
 
+#define DT_DRV_COMPAT zmk_behavior_dongle_action
+
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
+#include <drivers/behavior.h>
 #include <zmk/behavior.h>
 
 #include <zmk_dongle_events/dongle_action_event.h>
@@ -36,8 +39,6 @@ static const struct behavior_driver_api behavior_dongle_action_driver_api = {
     .binding_pressed = behavior_dongle_action_keymap_binding_pressed,
     .binding_released = behavior_dongle_action_keymap_binding_released,
 };
-
-#define DT_DRV_COMPAT zmk_behavior_dongle_action
 
 #define DONGLE_ACTION_INST(n)                                                                      \
     BEHAVIOR_DT_INST_DEFINE(n, behavior_dongle_action_init, NULL, NULL, NULL, POST_KERNEL,         \

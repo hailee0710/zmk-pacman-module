@@ -1,6 +1,7 @@
 / {
     chosen {
         zmk,display = &st7789p3;
+        zephyr,display = &st7789p3;
     };
 };
 

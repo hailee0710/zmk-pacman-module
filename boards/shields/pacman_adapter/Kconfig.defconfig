@@ -1,5 +1,10 @@
 # Pacman Dongle Adapter Shield - Default Kconfig
 
+if SHIELD_PACMAN_ADAPTER
+
+config ZMK_DONGLE_PACMAN
+  default y
+
 config ZMK_DISPLAY
   default y
 
@@ -9,8 +14,13 @@ config DISPLAY
 config LVGL
   default y
 
+config LV_USE_IMG
+  default y
+
 config SPI
   default y
 
 config GPIO
   default y
+
+endif # SHIELD_PACMAN_ADAPTER

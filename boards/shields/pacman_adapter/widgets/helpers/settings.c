@@ -45,21 +45,21 @@ static int settings_handler(const char *name, size_t len, settings_read_cb read_
 }
 
 SETTINGS_STATIC_HANDLER_DEFINE(pacman_settings, SETTINGS_PATH_THEME, NULL,
-                               settings_handler, NULL);
+                               settings_handler, NULL, NULL);
 
-void settings_init(void) {
-    settings_load();
+void pacman_settings_init(void) {
+    pacman_settings_load();
     LOG_INF("Pacman settings initialized (theme=%u, highscore=%u, brightness=%u)",
             current_theme, high_score, brightness);
 }
 
-bool settings_load(void) {
+bool pacman_settings_load(void) {
     int rc = settings_load_subtree(SETTINGS_PATH_THEME);
     if (rc) LOG_WRN("Failed to load settings subtree: %d", rc);
     return (rc == 0);
 }
 
-bool settings_save(void) {
+bool pacman_settings_save(void) {
     int rc;
     rc = settings_save_one(SETTINGS_PATH_THEME, &current_theme, sizeof(current_theme));
     if (rc) return false;
@@ -72,7 +72,7 @@ bool settings_save(void) {
 void settings_set_theme(uint8_t theme) {
     if (current_theme != theme) {
         current_theme = theme;
-        settings_save();
+        pacman_settings_save();
     }
 }
 
@@ -81,7 +81,7 @@ uint8_t settings_get_theme(void) { return current_theme; }
 void settings_set_high_score(uint16_t score) {
     if (score > high_score) {
         high_score = score;
-        settings_save();
+        pacman_settings_save();
     }
 }
 
@@ -90,7 +90,7 @@ uint16_t settings_get_high_score(void) { return high_score; }
 void settings_set_brightness(uint8_t b) {
     if (brightness != b) {
         brightness = b;
-        settings_save();
+        pacman_settings_save();
     }
 }
 

@@ -23,7 +23,7 @@ LOG_MODULE_REGISTER(display_helpers, CONFIG_DISPLAY_LOG_LEVEL);
 /* Full-screen framebuffer (320 × 172 × 2 bytes = 110,080 bytes) */
 static uint16_t fb[DISPLAY_W * DISPLAY_H];
 static const struct device *disp_dev;
-static lv_display_t *lvgl_display;
+static lv_disp_t *lvgl_display;
 static lv_obj_t *flush_img;
 
 /* ---- Internal: fast horizontal line in framebuffer ---- */
@@ -42,13 +42,13 @@ static inline void fb_pixel(uint16_t x, uint16_t y, uint16_t color) {
 /* ---- Init ---- */
 int display_init(const struct device *dev) {
     disp_dev = dev;
-    lvgl_display = lv_display_get_default();
+    lvgl_display = lv_disp_get_default();
     if (!lvgl_display) {
         LOG_ERR("No LVGL display found");
         return -ENODEV;
     }
     memset(fb, 0, sizeof(fb));
-    flush_img = lv_image_create(lv_layer_top());
+    flush_img = lv_img_create(lv_layer_top());
     lv_obj_set_pos(flush_img, 0, 0);
     LOG_INF("Framebuffer ready (%dx%d, %u bytes)", DISPLAY_W, DISPLAY_H, (unsigned)sizeof(fb));
     return 0;
@@ -263,15 +263,15 @@ void display_draw_power_pellet(uint16_t cx, uint16_t cy, uint8_t r,
 /* ---- Flush framebuffer to display ---- */
 
 void display_flush(void) {
-    static lv_image_dsc_t img_dsc;
-    img_dsc.header.magic = LV_IMAGE_HEADER_MAGIC;
-    img_dsc.header.cf    = LV_COLOR_FORMAT_RGB565;
-    img_dsc.header.w     = DISPLAY_W;
-    img_dsc.header.h     = DISPLAY_H;
-    img_dsc.header.stride = DISPLAY_W * 2;
-    img_dsc.data_size    = sizeof(fb);
-    img_dsc.data         = fb;
+    static lv_img_dsc_t img_dsc;
+    img_dsc.header.always_zero = 0;
+    img_dsc.header.reserved    = 0;
+    img_dsc.header.cf          = LV_IMG_CF_TRUE_COLOR;
+    img_dsc.header.w           = DISPLAY_W;
+    img_dsc.header.h           = DISPLAY_H;
+    img_dsc.data_size          = sizeof(fb);
+    img_dsc.data               = (const uint8_t *)fb;
 
-    lv_image_set_src(flush_img, &img_dsc);
+    lv_img_set_src(flush_img, &img_dsc);
     lv_refr_now(lvgl_display);
 }

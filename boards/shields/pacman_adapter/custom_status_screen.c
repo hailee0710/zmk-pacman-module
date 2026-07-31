@@ -13,6 +13,7 @@
 #include <zephyr/logging/log.h>
 
 #include <zmk/display.h>
+#include <zmk/ble.h>
 #include <zmk/events/ble_active_profile_changed.h>
 #include <zmk/events/usb_conn_state_changed.h>
 #include <zmk/events/battery_state_changed.h>
@@ -22,6 +23,7 @@
 #include <zmk/keymap.h>
 
 #include "custom_status_screen.h"
+#include "widgets/helpers/display.h"
 #include "widgets/pacman.h"
 #include "widgets/theme.h"
 #include "widgets/battery_status.h"
@@ -71,8 +73,7 @@ K_TIMER_DEFINE(tick_timer, tick_timer_handler, NULL);
 static int ble_handler(const zmk_event_t *eh) {
     const struct zmk_ble_active_profile_changed *ev = as_zmk_ble_active_profile_changed(eh);
     if (ev) {
-        /* profile_index of 0xFF means disconnected; anything else is connected */
-        bool connected = (ev->profile_index != 0xFF);
+        bool connected = zmk_ble_active_profile_is_connected();
         pacman_status_set_host_connection(&pacman_st, connected, 2);
     }
     return ZMK_EV_EVENT_BUBBLE;
@@ -80,7 +81,7 @@ static int ble_handler(const zmk_event_t *eh) {
 
 static int usb_handler(const zmk_event_t *eh) {
     const struct zmk_usb_conn_state_changed *ev = as_zmk_usb_conn_state_changed(eh);
-    if (ev) pacman_status_set_host_connection(&pacman_st, ev->conn_state, 1);
+    if (ev) pacman_status_set_host_connection(&pacman_st, ev->conn_state == ZMK_USB_CONN_HID, 1);
     return ZMK_EV_EVENT_BUBBLE;
 }
 
