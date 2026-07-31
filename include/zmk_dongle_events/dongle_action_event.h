@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <zmk/events/event.h>
+#include <zmk/event_manager.h>
 
 /* Dongle action IDs — passed via binding->param1 in devicetree */
 enum {
@@ -19,7 +19,6 @@ enum {
 };
 
 struct zmk_dongle_action_event {
-    struct zmk_event header;
     uint8_t action;
 };
 

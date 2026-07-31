@@ -14,9 +14,3 @@ config SPI
 
 config GPIO
   default y
-
-config ZMK_DONGLE_PACMAN
-  default y
-
-config ZMK_DONGLE_ACTION
-  default y

@@ -20,10 +20,9 @@ static int behavior_dongle_action_keymap_binding_pressed(struct zmk_behavior_bin
                                                          struct zmk_behavior_binding_event event) {
     LOG_DBG("Dongle action pressed: action=%d", binding->param1);
 
-    struct zmk_dongle_action_event *action_event =
-        new_zmk_dongle_action_event();
-    action_event->action = binding->param1;
-    ZMK_EVENT_RAISE(action_event);
+    raise_zmk_dongle_action_event((struct zmk_dongle_action_event){
+        .action = binding->param1,
+    });
 
     return ZMK_BEHAVIOR_OPAQUE;
 }

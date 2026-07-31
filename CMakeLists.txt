@@ -5,6 +5,6 @@
 if(CONFIG_ZMK_DONGLE_PACMAN)
   zephyr_include_directories(include)
 
-  add_subdirectory_ifdef(CONFIG_ZMK_DONGLE_ACTION src/events)
+  add_subdirectory(src/events)
   add_subdirectory_ifdef(CONFIG_ZMK_DONGLE_ACTION src/behaviors)
 endif()
