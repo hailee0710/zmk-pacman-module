@@ -1,6 +1,8 @@
 / {
     chosen {
-        zmk,display = &st7789p3;
+        /* zephyr,display is what both Zephyr's LVGL glue and ZMK's display
+         * subsystem read; zmk,display is not a real chosen property in
+         * current ZMK and was only ever a leftover alongside this one. */
         zephyr,display = &st7789p3;
     };
 };
@@ -32,14 +34,19 @@
     st7789p3: st7789p3@0 {
         compatible = "sitronix,st7789p3";
         reg = <0>;
-        spi-max-frequency = <40000000>;
+        /* nRF52840 SPIM0/1/2 cap out at 8 MHz; only SPIM3 does 32 MHz. */
+        spi-max-frequency = <8000000>;
         width = <320>;
         height = <172>;
-        madctl = <0x20>;
+        /* MV|MX for landscape. If the image is mirrored/upside-down on
+         * actual hardware, try 0xA0 (MV|MY) or 0xE0 (MV|MX|MY) instead —
+         * this can't be verified without hardware. */
+        madctl = <0x60>;
         colmod = <0x55>;
         x-offset = <0>;
-        y-offset = <0>;
+        y-offset = <34>;
+        inversion;
         reset-gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;
-        dc-gpios = <&gpio1 7 GPIO_ACTIVE_LOW>;
+        dc-gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>;
     };
 };

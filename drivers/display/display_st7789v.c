@@ -5,17 +5,20 @@
  * ST7789P3 Display Driver for ZMK
  * 320x172 landscape orientation
  *
- * Uses LVGL's display interface for ZMK compatibility.
+ * Implements Zephyr's display_driver_api directly so that Zephyr's own
+ * LVGL glue (which calls display_get_capabilities()/display_write() on the
+ * chosen zephyr,display device) can drive this panel.
  */
+
+#include <string.h>
 
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/spi.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/display.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/logging/log.h>
-
-#include <lvgl.h>
 
 #include "display_st7789v.h"
 
@@ -72,12 +75,6 @@ struct st7789p3_config {
     uint8_t y_offset;
 };
 
-struct st7789p3_data {
-    lv_disp_t *display;
-    lv_disp_drv_t disp_drv;
-    lv_disp_draw_buf_t draw_buf;
-};
-
 /* Send command byte */
 static inline void st7789p3_write_cmd(const struct device *dev, uint8_t cmd) {
     const struct st7789p3_config *config = dev->config;
@@ -126,11 +123,11 @@ static void st7789p3_set_window(const struct device *dev, uint16_t xs, uint16_t 
 static void st7789p3_reset(const struct device *dev) {
     const struct st7789p3_config *config = dev->config;
     if (config->reset_gpio.port == NULL) return;
+    /* reset-gpios is GPIO_ACTIVE_LOW; gpio_pin_set_dt() takes logical values,
+     * so logical 1 asserts reset and logical 0 releases it. */
     gpio_pin_set_dt(&config->reset_gpio, 1);
     k_msleep(10);
     gpio_pin_set_dt(&config->reset_gpio, 0);
-    k_msleep(10);
-    gpio_pin_set_dt(&config->reset_gpio, 1);
     k_msleep(120);
 }
 
@@ -206,26 +203,80 @@ static void st7789p3_init_seq(const struct device *dev) {
     k_msleep(120);
 }
 
-/* LVGL flush callback */
-static void st7789p3_flush_cb(lv_disp_drv_t *disp_drv, const lv_area_t *area,
-                               lv_color_t *color_p) {
-    const struct device *dev = disp_drv->user_data;
-    uint16_t w = area->x2 - area->x1 + 1;
-    uint16_t h = area->y2 - area->y1 + 1;
-
-    st7789p3_set_window(dev, area->x1, area->x2, area->y1, area->y2);
-    st7789p3_write_cmd(dev, ST7789_RAMWR);
-
-    uint32_t size = w * h;
-    uint16_t *src = (uint16_t *)color_p;
-    for (uint32_t i = 0; i < size; i++) {
-        uint16_t c = src[i];
-        uint8_t swapped[] = {(c >> 8) & 0xFF, c & 0xFF};
-        st7789p3_write_data(dev, swapped, 2);
+/* display_driver_api: write() */
+static int st7789p3_write(const struct device *dev, const uint16_t x, const uint16_t y,
+                           const struct display_buffer_descriptor *desc, const void *buf) {
+    if (desc->pitch != desc->width) {
+        LOG_ERR("Unsupported pitch %d (width %d)", desc->pitch, desc->width);
+        return -ENOTSUP;
     }
 
-    lv_disp_flush_ready(disp_drv);
+    size_t buf_size = (size_t)desc->width * desc->height * 2;
+    if (desc->buf_size < buf_size) {
+        LOG_ERR("Buffer too small (%d < %zu)", desc->buf_size, buf_size);
+        return -EINVAL;
+    }
+
+    st7789p3_set_window(dev, x, x + desc->width - 1, y, y + desc->height - 1);
+    st7789p3_write_cmd(dev, ST7789_RAMWR);
+
+    /* CONFIG_LV_COLOR_16_SWAP=y makes LVGL hand us big-endian-on-wire
+     * RGB565 already, so this can be written straight through in one
+     * bulk SPI transfer without any per-pixel byte swap. */
+    st7789p3_write_data(dev, buf, buf_size);
+
+    return 0;
 }
+
+/* display_driver_api: blanking_on()/blanking_off() */
+static int st7789p3_blanking_on(const struct device *dev) {
+    st7789p3_write_cmd(dev, ST7789_DISPOFF);
+    return 0;
+}
+
+static int st7789p3_blanking_off(const struct device *dev) {
+    st7789p3_write_cmd(dev, ST7789_DISPON);
+    return 0;
+}
+
+/* display_driver_api: get_capabilities() */
+static void st7789p3_get_capabilities(const struct device *dev,
+                                       struct display_capabilities *caps) {
+    const struct st7789p3_config *config = dev->config;
+
+    memset(caps, 0, sizeof(*caps));
+    caps->x_resolution = config->width;
+    caps->y_resolution = config->height;
+    caps->supported_pixel_formats = PIXEL_FORMAT_RGB_565;
+    caps->current_pixel_format = PIXEL_FORMAT_RGB_565;
+    caps->current_orientation = DISPLAY_ORIENTATION_NORMAL;
+    caps->screen_info = 0;
+}
+
+/* display_driver_api: set_pixel_format() */
+static int st7789p3_set_pixel_format(const struct device *dev,
+                                      const enum display_pixel_format format) {
+    return (format == PIXEL_FORMAT_RGB_565) ? 0 : -ENOTSUP;
+}
+
+/* display_driver_api: set_orientation() */
+static int st7789p3_set_orientation(const struct device *dev,
+                                     const enum display_orientation orientation) {
+    return (orientation == DISPLAY_ORIENTATION_NORMAL) ? 0 : -ENOTSUP;
+}
+
+static const struct display_driver_api st7789p3_api = {
+    .blanking_on = st7789p3_blanking_on,
+    .blanking_off = st7789p3_blanking_off,
+    .write = st7789p3_write,
+    .read = NULL,
+    .get_framebuffer = NULL,
+    .set_brightness = NULL,
+    .set_contrast = NULL,
+    .get_capabilities = st7789p3_get_capabilities,
+    .set_pixel_format = st7789p3_set_pixel_format,
+    .set_orientation = st7789p3_set_orientation,
+};
 
 /* Init */
 static int st7789p3_init(const struct device *dev) {
@@ -243,28 +294,8 @@ static int st7789p3_init(const struct device *dev) {
 
     if (config->bl_gpio.port) gpio_pin_set_dt(&config->bl_gpio, 1);
 
-    /* Register LVGL display */
-    struct st7789p3_data *data = dev->data;
-
-    static lv_color_t buf1[ST7789_WIDTH * 20];
-    lv_disp_draw_buf_init(&data->draw_buf, buf1, NULL, ST7789_WIDTH * 20);
-
-    lv_disp_drv_init(&data->disp_drv);
-    data->disp_drv.hor_res = config->width;
-    data->disp_drv.ver_res = config->height;
-    data->disp_drv.flush_cb = st7789p3_flush_cb;
-    data->disp_drv.draw_buf = &data->draw_buf;
-    data->disp_drv.user_data = (void *)dev;
-
-    data->display = lv_disp_drv_register(&data->disp_drv);
-    if (!data->display) { LOG_ERR("LVGL display register failed"); return -ENOMEM; }
-
     LOG_INF("ST7789P3 landscape ready");
     return 0;
-}
-
-int display_st7789p3_init(const struct device *dev) {
-    return st7789p3_init(dev);
 }
 
 #define ST7789P3_DEVICE(id) \
@@ -282,8 +313,8 @@ int display_st7789p3_init(const struct device *dev) {
         .x_offset = DT_INST_PROP_OR(id, x_offset, 0), \
         .y_offset = DT_INST_PROP_OR(id, y_offset, 0), \
     }; \
-    static struct st7789p3_data st7789p3_data_##id; \
-    DEVICE_DT_INST_DEFINE(id, st7789p3_init, NULL, &st7789p3_data_##id, \
-                          &st7789p3_config_##id, POST_KERNEL, CONFIG_DISPLAY_INIT_PRIORITY, NULL);
+    DEVICE_DT_INST_DEFINE(id, st7789p3_init, NULL, NULL, \
+                          &st7789p3_config_##id, POST_KERNEL, CONFIG_DISPLAY_INIT_PRIORITY, \
+                          &st7789p3_api);
 
 DT_INST_FOREACH_STATUS_OKAY(ST7789P3_DEVICE)

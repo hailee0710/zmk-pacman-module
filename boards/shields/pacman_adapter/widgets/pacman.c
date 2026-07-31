@@ -47,13 +47,16 @@ static void draw_battery(uint16_t x, uint16_t y, uint8_t pct) {
     }
 }
 
-/* Find a free dot slot, or recycle the rightmost one */
+/* Find a free dot slot, or recycle the leftmost (oldest, closest to being
+ * eaten) one. Recycling the rightmost/newest dot instead — as this used
+ * to — would teleport the dot that just spawned back to the spawn point,
+ * visibly stalling the flow at high WPM once all slots are busy. */
 static int8_t find_slot(pacman_status_t *st) {
     for (int i = 0; i < DOT_MAX_COUNT; i++)
         if (!st->dots[i].active) return i;
-    int16_t best = -1; int8_t best_i = -1;
+    int16_t best = INT16_MAX; int8_t best_i = -1;
     for (int i = 0; i < DOT_MAX_COUNT; i++)
-        if (st->dots[i].active && st->dots[i].x > best) { best = st->dots[i].x; best_i = i; }
+        if (st->dots[i].active && st->dots[i].x < best) { best = st->dots[i].x; best_i = i; }
     return best_i;
 }
 
@@ -74,6 +77,7 @@ void pacman_status_init(pacman_status_t *st, const struct device *dev) {
     st->dev          = dev;
     st->mouth_frame  = 2;
     st->mouth_delta  = 1;
+    strcpy(st->layer_name, "L0");
     st->initialized  = true;
 }
 
@@ -85,6 +89,12 @@ void pacman_status_set_host_connection(pacman_status_t *st, bool c, uint8_t t) {
 
 void pacman_status_set_batteries(pacman_status_t *st, uint8_t l, uint8_t r) {
     st->left_battery = l; st->right_battery = r; st->dirty = true;
+}
+
+void pacman_status_set_layer(pacman_status_t *st, const char *name) {
+    strncpy(st->layer_name, name, sizeof(st->layer_name) - 1);
+    st->layer_name[sizeof(st->layer_name) - 1] = '\0';
+    st->dirty = true;
 }
 
 void pacman_status_key_pressed(pacman_status_t *st) {
@@ -150,6 +160,9 @@ static void render_top_bar(pacman_status_t *st) {
     /* Title */
     display_write_text(120, 4, "PACMAN", COLOR_PACMAN_YELLOW, COLOR_BLACK, 1);
     display_write_text(172, 4, "DONGLE", COLOR_WHITE, COLOR_BLACK, 1);
+
+    /* Active layer */
+    display_write_text(208, 4, st->layer_name, COLOR_CYAN, COLOR_BLACK, 1);
 
     /* Host connection */
     if (st->host_connected) {

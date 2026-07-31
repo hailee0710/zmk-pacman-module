@@ -69,6 +69,8 @@ typedef struct {
     uint8_t  left_battery;
     uint8_t  right_battery;
 
+    char     layer_name[8];
+
     const struct device *dev;
     bool dirty;
     bool initialized;
@@ -82,3 +84,4 @@ void pacman_status_key_pressed(pacman_status_t *st);
 void pacman_status_set_wpm(pacman_status_t *st, uint8_t wpm);
 void pacman_status_set_host_connection(pacman_status_t *st, bool connected, uint8_t transport);
 void pacman_status_set_batteries(pacman_status_t *st, uint8_t lp, uint8_t rp);
+void pacman_status_set_layer(pacman_status_t *st, const char *name);

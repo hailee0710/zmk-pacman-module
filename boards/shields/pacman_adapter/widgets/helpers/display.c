@@ -11,6 +11,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <lvgl.h>
@@ -26,16 +27,23 @@ static const struct device *disp_dev;
 static lv_disp_t *lvgl_display;
 static lv_obj_t *flush_img;
 
-/* ---- Internal: fast horizontal line in framebuffer ---- */
-static inline void fb_hline(uint16_t x, uint16_t y, uint16_t w, uint16_t color) {
-    if (x >= DISPLAY_W || y >= DISPLAY_H) return;
+/* ---- Internal: fast horizontal line in framebuffer ----
+ * x/y/w are signed: callers derive them from center-radius arithmetic
+ * (e.g. cx - r) that legitimately goes negative for shapes near the
+ * left/top edge, and clipping that correctly requires a real sign rather
+ * than wrapping around through uint16_t.
+ */
+static inline void fb_hline(int16_t x, int16_t y, int16_t w, uint16_t color) {
+    if (y < 0 || y >= DISPLAY_H || w <= 0) return;
+    if (x < 0) { w += x; x = 0; }
+    if (x >= DISPLAY_W || w <= 0) return;
     if (x + w > DISPLAY_W) w = DISPLAY_W - x;
     uint16_t *dst = &fb[y * DISPLAY_W + x];
-    for (uint16_t i = 0; i < w; i++) dst[i] = color;
+    for (int16_t i = 0; i < w; i++) dst[i] = color;
 }
 
-static inline void fb_pixel(uint16_t x, uint16_t y, uint16_t color) {
-    if (x < DISPLAY_W && y < DISPLAY_H)
+static inline void fb_pixel(int16_t x, int16_t y, uint16_t color) {
+    if (x >= 0 && x < DISPLAY_W && y >= 0 && y < DISPLAY_H)
         fb[y * DISPLAY_W + x] = color;
 }
 
@@ -64,19 +72,16 @@ void display_fill(uint16_t color) {
     for (uint32_t i = 0; i < DISPLAY_W * DISPLAY_H; i++) fb[i] = color;
 }
 
-void display_fill_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color) {
-    if (x >= DISPLAY_W || y >= DISPLAY_H) return;
-    if (x + w > DISPLAY_W) w = DISPLAY_W - x;
-    if (y + h > DISPLAY_H) h = DISPLAY_H - y;
+void display_fill_rect(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t color) {
     for (uint16_t row = 0; row < h; row++)
         fb_hline(x, y + row, w, color);
 }
 
-void display_draw_pixel(uint16_t x, uint16_t y, uint16_t color) {
+void display_draw_pixel(int16_t x, int16_t y, uint16_t color) {
     fb_pixel(x, y, color);
 }
 
-void display_draw_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color) {
+void display_draw_rect(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t color) {
     fb_hline(x, y, w, color);                    /* top */
     fb_hline(x, y + h - 1, w, color);            /* bottom */
     for (uint16_t i = 0; i < h; i++) {           /* left + right */
@@ -85,9 +90,17 @@ void display_draw_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t 
     }
 }
 
-void display_draw_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color) {
-    int16_t dx = abs((int16_t)x2 - (int16_t)x1), sx = x1 < x2 ? 1 : -1;
-    int16_t dy = -abs((int16_t)y2 - (int16_t)y1), sy = y1 < y2 ? 1 : -1;
+/* x1/y1/x2/y2 are signed so that the direction the walk steps (sx/sy) is
+ * decided by a real signed comparison. Passing these through as uint16_t
+ * (as this used to) meant a negative endpoint — e.g. cx - r for a circle
+ * near the left edge — silently wrapped to a huge unsigned value; the
+ * *distance* (dx/dy) still came out right after the (int16_t) cast below,
+ * but the x1 < x2 comparison that picks sx/sy saw the wrapped value and
+ * could step in the wrong direction, walking the "line" the long way
+ * around all 65536 values instead of the short way to x2/y2. */
+void display_draw_line(int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t color) {
+    int16_t dx = abs(x2 - x1), sx = x1 < x2 ? 1 : -1;
+    int16_t dy = -abs(y2 - y1), sy = y1 < y2 ? 1 : -1;
     int16_t err = dx + dy;
     while (1) {
         fb_pixel(x1, y1, color);
@@ -98,7 +111,7 @@ void display_draw_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint1
     }
 }
 
-void display_draw_circle(uint16_t cx, uint16_t cy, uint16_t r, uint16_t color) {
+void display_draw_circle(int16_t cx, int16_t cy, uint16_t r, uint16_t color) {
     int16_t x = r, y = 0, err = 0;
     while (x >= y) {
         fb_pixel(cx + x, cy + y, color); fb_pixel(cx + y, cy + x, color);
@@ -110,7 +123,7 @@ void display_draw_circle(uint16_t cx, uint16_t cy, uint16_t r, uint16_t color) {
     }
 }
 
-void display_draw_filled_circle(uint16_t cx, uint16_t cy, uint16_t r, uint16_t color) {
+void display_draw_filled_circle(int16_t cx, int16_t cy, uint16_t r, uint16_t color) {
     int16_t x = r, y = 0, err = 0;
     while (x >= y) {
         display_draw_line(cx - x, cy + y, cx + x, cy + y, color);
@@ -124,10 +137,10 @@ void display_draw_filled_circle(uint16_t cx, uint16_t cy, uint16_t r, uint16_t c
 
 /* ---- Bitmap text rendering ---- */
 
-void display_write_text(uint16_t x, uint16_t y, const char *text,
+void display_write_text(int16_t x, int16_t y, const char *text,
                         uint16_t color, uint16_t bg_color, uint8_t scale) {
     if (!text || scale == 0) return;
-    uint16_t cx = x;
+    int16_t cx = x;
     uint8_t len = (uint8_t)strlen(text);
     for (uint8_t i = 0; i < len; i++) {
         Character c = char_to_enum(text[i]);
@@ -140,15 +153,15 @@ void display_write_text(uint16_t x, uint16_t y, const char *text,
                     bool fg = (bm[row * FONT_5x7_W + col] != 0);
                     if (!in_run) { run_start = col; run_fg = fg; in_run = true; }
                     else if (fg != run_fg) {
-                        uint16_t rx = cx + run_start * scale;
-                        uint16_t ry = y + row * scale + sr;
+                        int16_t rx = cx + run_start * scale;
+                        int16_t ry = y + row * scale + sr;
                         fb_hline(rx, ry, (col - run_start) * scale, run_fg ? color : bg_color);
                         run_start = col; run_fg = fg;
                     }
                 }
                 if (in_run) {
-                    uint16_t rx = cx + run_start * scale;
-                    uint16_t ry = y + row * scale + sr;
+                    int16_t rx = cx + run_start * scale;
+                    int16_t ry = y + row * scale + sr;
                     fb_hline(rx, ry, (FONT_5x7_W - run_start) * scale, run_fg ? color : bg_color);
                 }
             }
@@ -159,14 +172,18 @@ void display_write_text(uint16_t x, uint16_t y, const char *text,
 
 /* ---- Pacman / Ghost / Dot ---- */
 
-/* Integer sin LUT: sin(0°..90°) scaled by 256 */
+/* Integer sin LUT: sin(0°..90°) scaled by 256, i.e. lut[d] = round(256*sin(d)).
+ * Exactly 91 entries for d = 0..90 inclusive — the previous table had 92
+ * initializers (an "excess elements" overflow silently dropped the last
+ * one) and was a half-wave over 0..180° squeezed into a quarter-wave table
+ * peaking at ~135 instead of 256. */
 static const int16_t sin_lut[91] = {
-    0,4,8,13,17,22,26,31,35,39,44,48,52,56,60,64,68,72,76,80,
-    83,87,90,94,97,100,103,106,109,112,114,117,119,121,123,125,
-    127,129,130,131,132,133,134,134,135,135,135,135,135,134,134,
-    133,132,131,130,129,127,125,123,121,119,117,114,112,109,106,
-    103,100,97,94,90,87,83,80,76,72,68,64,60,56,52,48,44,39,35,
-    31,26,22,17,13,8,4
+    0,  4,  9,  13, 18, 22, 27, 31, 36, 40, 44, 49, 53, 58, 62, 66,
+    71, 75, 79, 83, 88, 92, 96, 100,104,108,112,116,120,124,128,132,
+    136,139,143,147,150,154,158,161,165,168,171,175,178,181,184,187,
+    190,193,196,199,202,204,207,210,212,215,217,219,222,224,226,228,
+    230,232,234,236,237,239,241,242,243,245,246,247,248,249,250,251,
+    252,253,254,254,255,255,255,256,256,256,256
 };
 
 /* Get sin(deg) scaled by 256 for any integer degree 0..359 */
@@ -182,11 +199,13 @@ static inline int16_t icos(int16_t d) { return isin(d + 90); }
 
 /* Draw a filled circular arc from start_angle to end_angle (degrees, 0-359).
    Uses integer arithmetic only (cross products + LUT for sin/cos). */
-static void fb_filled_arc(uint16_t cx, uint16_t cy, uint16_t r,
+static void fb_filled_arc(int16_t cx, int16_t cy, uint16_t r,
                            int16_t sa, int16_t ea, uint16_t color) {
     /* Normalize angles to 0..359 */
-    while (sa < 0) sa += 360; while (sa >= 360) sa -= 360;
-    while (ea < 0) ea += 360; while (ea >= 360) ea -= 360;
+    while (sa < 0) { sa += 360; }
+    while (sa >= 360) { sa -= 360; }
+    while (ea < 0) { ea += 360; }
+    while (ea >= 360) { ea -= 360; }
 
     /* Direction vectors (scaled by 256) for the two bounding rays */
     int16_t sx = icos(sa), sy = isin(sa); /* start ray (counter-clockwise edge) */
@@ -205,20 +224,22 @@ static void fb_filled_arc(uint16_t cx, uint16_t cy, uint16_t r,
             int32_t cross_s = (int32_t)sx * dy - (int32_t)sy * dx; /* positive = CCW of start */
             int32_t cross_e = (int32_t)ex * dy - (int32_t)ey * dx; /* positive = CCW of end */
 
-            /* Inside arc if: cross_s >= 0 (on or CCW of start) AND cross_e <= 0 (on or CW of end) */
-            /* For wrap-around arcs (sa > ea), the condition is a logical OR instead */
-            bool inside;
-            if (sa <= ea) {
-                inside = (cross_s >= 0 && cross_e <= 0);
-            } else {
-                inside = (cross_s >= 0 || cross_e <= 0);
-            }
+            /* Inside arc if: cross_s >= 0 (on or CCW of start) AND cross_e <= 0 (on or CW of end).
+             * Which combinator to use depends on the arc's sweep, not on whether
+             * sa <= ea numerically — sa <= ea says nothing about the sweep once sa/ea
+             * wrap past 360 (e.g. sa=30, ea=330 is a 300° sweep with sa < ea, where the
+             * two bounding half-planes intersect to at most 180°, not OR). A sweep over
+             * 180° needs the union of the two half-planes instead of their intersection. */
+            int16_t sweep = ea - sa;
+            if (sweep < 0) sweep += 360;
+            bool inside = (sweep <= 180) ? (cross_s >= 0 && cross_e <= 0)
+                                          : (cross_s >= 0 || cross_e <= 0);
             if (inside) fb_pixel(cx + dx, cy + dy, color);
         }
     }
 }
 
-void display_draw_pacman(uint16_t cx, uint16_t cy, uint16_t r,
+void display_draw_pacman(int16_t cx, int16_t cy, uint16_t r,
                          uint8_t dir, uint8_t m, uint16_t color) {
     uint16_t ma;
     switch (m) { case 0:ma=5; break; case 1:ma=15; break; case 2:ma=30; break;
@@ -234,27 +255,27 @@ void display_draw_pacman(uint16_t cx, uint16_t cy, uint16_t r,
     fb_filled_arc(cx, cy, r, sa, ea, color);
 }
 
-void display_draw_ghost(uint16_t x, uint16_t y, uint16_t w, uint16_t h,
+void display_draw_ghost(int16_t x, int16_t y, uint16_t w, uint16_t h,
                         uint16_t color, bool eyes_left) {
     uint16_t r = w / 2, bh = h - 4;
     display_draw_filled_circle(x + r, y + r, r, color);
     display_fill_rect(x, y + r, w, bh - r + 1, color);
-    uint16_t sy = y + bh, ww = w / 3;
+    int16_t sy = y + bh; uint16_t ww = w / 3;
     for (int i = 0; i < 3; i++)
         display_draw_filled_circle(x + i * ww + ww / 2, sy + 2, ww / 2, color);
-    uint16_t ey = y + r - 2, lex = x + r - 3, rex = x + r + 3;
+    int16_t ey = y + r - 2, lex = x + r - 3, rex = x + r + 3;
     display_draw_filled_circle(lex, ey, 3, COLOR_WHITE);
     display_draw_filled_circle(rex, ey, 3, COLOR_WHITE);
-    uint16_t po = eyes_left ? -1 : 1;
+    int16_t po = eyes_left ? -1 : 1;
     display_draw_filled_circle(lex + po, ey, 1, COLOR_BLUE);
     display_draw_filled_circle(rex + po, ey, 1, COLOR_BLUE);
 }
 
-void display_draw_dot(uint16_t cx, uint16_t cy, uint8_t r, uint16_t color) {
+void display_draw_dot(int16_t cx, int16_t cy, uint8_t r, uint16_t color) {
     display_draw_filled_circle(cx, cy, r, color);
 }
 
-void display_draw_power_pellet(uint16_t cx, uint16_t cy, uint8_t r,
+void display_draw_power_pellet(int16_t cx, int16_t cy, uint8_t r,
                                uint16_t color, bool blink) {
     if (blink) display_draw_circle(cx, cy, r, color);
     else       display_draw_filled_circle(cx, cy, r, color);

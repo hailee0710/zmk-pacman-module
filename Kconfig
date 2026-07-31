@@ -6,14 +6,3 @@ menuconfig ZMK_DONGLE_PACMAN
   help
     Enable the Pacman Dongle module for ZMK. This provides a
     Pacman-themed status screen and game on an ST7789P3 172x320 display.
-
-if ZMK_DONGLE_PACMAN
-
-config ZMK_DONGLE_ACTION
-  bool "Dongle action behavior support"
-  default y
-  help
-    Enable the dongle action behavior that allows key bindings
-    to control the Pacman dongle (navigation, game controls, etc.).
-
-endif # ZMK_DONGLE_PACMAN

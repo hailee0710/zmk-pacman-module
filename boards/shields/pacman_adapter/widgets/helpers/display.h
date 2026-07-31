@@ -64,24 +64,29 @@
 #define DIR_LEFT  2
 #define DIR_UP    3
 
-/* ---- Drawing primitives (write to framebuffer) ---- */
+/* ---- Drawing primitives (write to framebuffer) ----
+ * Coordinates are signed: shapes are frequently positioned via center-minus-
+ * radius arithmetic (e.g. cx - r) that legitimately goes negative for
+ * anything near the left/top edge, and that needs a real sign to clip
+ * correctly instead of wrapping around through an unsigned type. Sizes
+ * (w/h/radius) stay unsigned — they're never negative. */
 void display_fill(uint16_t color);
-void display_fill_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color);
-void display_draw_pixel(uint16_t x, uint16_t y, uint16_t color);
-void display_draw_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color);
-void display_draw_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
-void display_draw_circle(uint16_t cx, uint16_t cy, uint16_t r, uint16_t color);
-void display_draw_filled_circle(uint16_t cx, uint16_t cy, uint16_t r, uint16_t color);
-void display_write_text(uint16_t x, uint16_t y, const char *text,
+void display_fill_rect(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t color);
+void display_draw_pixel(int16_t x, int16_t y, uint16_t color);
+void display_draw_rect(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t color);
+void display_draw_line(int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t color);
+void display_draw_circle(int16_t cx, int16_t cy, uint16_t r, uint16_t color);
+void display_draw_filled_circle(int16_t cx, int16_t cy, uint16_t r, uint16_t color);
+void display_write_text(int16_t x, int16_t y, const char *text,
                         uint16_t color, uint16_t bg_color, uint8_t scale);
 
 /* ---- High-level shapes ---- */
-void display_draw_pacman(uint16_t cx, uint16_t cy, uint16_t radius,
+void display_draw_pacman(int16_t cx, int16_t cy, uint16_t radius,
                          uint8_t direction, uint8_t mouth_open, uint16_t color);
-void display_draw_ghost(uint16_t x, uint16_t y, uint16_t w, uint16_t h,
+void display_draw_ghost(int16_t x, int16_t y, uint16_t w, uint16_t h,
                         uint16_t color, bool eyes_left);
-void display_draw_dot(uint16_t cx, uint16_t cy, uint8_t radius, uint16_t color);
-void display_draw_power_pellet(uint16_t cx, uint16_t cy, uint8_t radius,
+void display_draw_dot(int16_t cx, int16_t cy, uint8_t radius, uint16_t color);
+void display_draw_power_pellet(int16_t cx, int16_t cy, uint8_t radius,
                                uint16_t color, bool blink);
 
 /* ---- Frame management ---- */

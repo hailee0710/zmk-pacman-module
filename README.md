@@ -37,7 +37,7 @@ manifest:
   projects:
     - name: zmk
       remote: zmkfirmware
-      revision: main
+      revision: v0.3 # pin to a specific release; this module is written against v0.3's display/behavior APIs
       import: app/west.yml
     - name: zmk-pacman-module
       remote: your-org
@@ -166,17 +166,9 @@ All colors are defined as RGB565 constants in `widgets/helpers/display.h`.
 
 ## Kconfig options
 
-### Module-level options
-
 | Option | Default | Description |
 |--------|---------|-------------|
-| `CONFIG_ZMK_DONGLE_PACMAN` | y | Master enable for the Pacman module |
-
-### Shield-level options
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `CONFIG_ZMK_DONGLE_PACMAN_BUZZER` | n | Enable buzzer/sound effects support |
+| `CONFIG_ZMK_DONGLE_PACMAN` | n | Master enable for the Pacman module; the `pacman_adapter` shield's `Kconfig.defconfig` turns this on automatically |
 
 ## Project structure
 
@@ -185,67 +177,54 @@ zmk-pacman-module/
 ├── CMakeLists.txt                  # Module entry point
 ├── Kconfig                         # Module Kconfig options
 ├── README.md                       # This file
-├── dts/bindings/
-│   ├── behaviors/
-│   │   └── zmk,behavior-dongle-action.yaml
-│   └── display/
-│       └── sitronix,st7789p3.yaml
+├── dts/bindings/display/
+│   └── sitronix,st7789p3.yaml
 ├── drivers/display/
-│   ├── display_st7789v.c
+│   ├── display_st7789v.c           # Zephyr display_driver_api implementation
 │   └── display_st7789v.h
-├── include/zmk_dongle_events/
-│   └── dongle_action_event.h
-├── src/
-│   ├── behaviors/
-│   │   ├── CMakeLists.txt
-│   │   └── behavior_dongle_action.c
-│   └── events/
-│       ├── CMakeLists.txt
-│       └── dongle_action_event.c
 ├── boards/shields/pacman_adapter/
 │   ├── CMakeLists.txt
 │   ├── Kconfig.defconfig
 │   ├── Kconfig.shield
 │   ├── pacman_adapter.conf
 │   ├── pacman_adapter.overlay
-│   ├── custom_status_screen.c      # Event handlers, render orchestrator
+│   ├── custom_status_screen.c      # zmk_display_status_screen(), ZMK event listeners, render tick
 │   ├── custom_status_screen.h
 │   ├── boards/
 │   │   └── nice_nano_v2.overlay    # Board-specific pin placeholders
 │   └── widgets/
 │       ├── pacman.c/h              # Pacman animation + rendering
 │       ├── theme.c/h               # Theme state
-│       ├── battery_status.c/h      # Battery tracking
+│       ├── battery_status.c/h      # Per-half battery tracking
 │       ├── layer_status.c/h        # Layer tracking
 │       ├── output_status.c/h       # BLE/USB output
 │       ├── wpm.c/h                 # WPM calculator
-│       ├── action_button.c/h       # On-screen button
-│       ├── configuration.c/h       # Config state
-│       ├── logo.c/h                # Boot logo
-│       ├── splash.c/h              # Splash screen
-│       ├── modifier.c/h            # Modifier key status
 │       └── helpers/
 │           ├── display.c/h         # Framebuffer drawing + Pixelwave palette
-│           ├── fonts.c/h           # 5×7 and 3×5 bitmap fonts
-│           ├── list.c/h            # List utility
-│           ├── settings.c/h        # Persistent settings
-│           ├── buzzer.c/h          # Buzzer (stub)
-│           └── pwm.c/h             # PWM (stub)
+│           └── fonts.c/h           # 5×7 and 3×5 bitmap fonts
 └── zephyr/
     └── module.yml                  # Zephyr module manifest
 ```
 
+This module used to also carry a `dongle_action` behavior (`src/`, `include/zmk_dongle_events/`,
+`dts/bindings/behaviors/`) for keymap-driven navigation/game controls. It was never wired to a
+devicetree instance and had no subscriber, so it could never run; it was removed rather than kept
+as dead weight. The same applies to a buzzer feature (`CONFIG_ZMK_DONGLE_PACMAN_BUZZER`,
+`helpers/buzzer.c`, `helpers/pwm.c`) that never touched real hardware, and a handful of widgets
+(`logo`, `splash`, `configuration`, `modifier`, `action_button`, `helpers/list`, `helpers/settings`)
+that were compiled in but never added to the screen.
+
 ## Build troubleshooting
 
 **Module not found at build time:**
-- Verify `module.yml` `depends:` includes `zmk`
 - Run `west update` and check the module appears under `modules/` in the build directory
 - Check that `CONFIG_ZMK_DONGLE_PACMAN=y` appears in `build/zephyr/.config`
 
 **Display stays blank:**
 - Confirm SPI and GPIO are enabled: `CONFIG_SPI=y`, `CONFIG_GPIO=y`
-- Verify the `zmk,display` chosen node points to your display: check `build/zephyr/devicetree_generated.h` for `DT_CHOSEN_zmk_display`
-- Check the display driver init log: `CONFIG_DISPLAY_LOG_LEVEL=4` for debug output
+- Verify the `zephyr,display` chosen node points to your display: check `build/zephyr/devicetree_generated.h` for `DT_CHOSEN_zephyr_display` (this is the property ZMK's display subsystem and Zephyr's LVGL glue actually read — `zmk,display` is not a real chosen property)
+- Check the display driver init log: look for `Initializing ST7789P3` / `ST7789P3 landscape ready` at `CONFIG_DISPLAY_LOG_LEVEL_INF=y`, and for `No status screen provided` in ZMK's own display log (that error means `zmk_display_status_screen()` returned NULL — check `custom_status_screen.c`)
+- If the CS pin is on P0.09/P0.10 (as the default `pacman_adapter.overlay` uses), confirm `CONFIG_NFCT_PINS_AS_GPIOS=y` is set — those pins default to the NFC antenna function on nRF52840 and won't drive as GPIO otherwise
 - Verify pin assignments match your physical wiring (especially the P1.xx bank)
 
 **Ghost zone never triggers:**

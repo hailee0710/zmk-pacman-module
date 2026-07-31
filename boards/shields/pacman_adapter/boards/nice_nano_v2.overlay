@@ -2,6 +2,6 @@
  * nice!nano v2 board-specific overrides
  *
  * All display pins now use P1.xx bank and P0.09 for CS,
- * avoiding conflicts with onboard charge LED (P0.17).
+ * avoiding conflicts with the onboard blue LED (P0.15).
  * No overrides needed — kept as a placeholder for future use.
  */

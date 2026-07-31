@@ -13,6 +13,3 @@
 /* Display dimensions - landscape */
 #define ST7789_WIDTH  320
 #define ST7789_HEIGHT 172
-
-/* Initialize the ST7789P3 display */
-int display_st7789p3_init(const struct device *dev);

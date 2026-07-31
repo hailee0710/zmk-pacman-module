@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef struct {
@@ -15,6 +16,9 @@ typedef struct {
 } battery_status_t;
 
 void battery_status_init(battery_status_t *st);
-void battery_state_update(battery_status_t *st);
+
+/* index 0 = left half, 1 = right half — set from the
+ * zmk_peripheral_battery_state_changed event's `source` field. */
+void battery_set_level(battery_status_t *st, uint8_t index, uint8_t level);
 uint8_t battery_get_level(battery_status_t *st, uint8_t index);
 bool battery_is_charging(battery_status_t *st, uint8_t index);

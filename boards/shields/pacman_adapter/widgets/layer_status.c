@@ -5,6 +5,7 @@
  * Layer status implementation
  */
 
+#include <stdio.h>
 #include <string.h>
 #include <zephyr/kernel.h>
 
