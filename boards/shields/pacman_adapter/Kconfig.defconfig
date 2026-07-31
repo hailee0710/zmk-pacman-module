@@ -12,12 +12,6 @@ config DISPLAY
 config LVGL
   default y
 
-config LV_COLOR_DEPTH_16
-  default y
-
-config LV_Z_BUFFER_ALLOC_DYNAMIC
-  default y
-
 config SPI
   default y
 
