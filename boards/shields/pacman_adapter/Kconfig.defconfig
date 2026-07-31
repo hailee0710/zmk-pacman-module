@@ -12,19 +12,10 @@ config DISPLAY
 config LVGL
   default y
 
-config LVGL_COLOR_DEPTH_16
+config LV_COLOR_DEPTH_16
   default y
 
-config LVGL_HOR_RES
-  default 320
-
-config LVGL_VER_RES
-  default 172
-
-config LVGL_USE_DISP
-  default y
-
-config LVGL_BUF_ALLOC_DYNAMIC
+config LV_Z_BUFFER_ALLOC_DYNAMIC
   default y
 
 config SPI
