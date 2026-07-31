@@ -16,30 +16,47 @@
 #define DISPLAY_W 320
 #define DISPLAY_H 172
 
-/* RGB565 colors */
-#define COLOR_BLACK         0x0000
-#define COLOR_WHITE         0xFFFF
-#define COLOR_RED           0xF800
-#define COLOR_GREEN         0x07E0
-#define COLOR_BLUE          0x001F
-#define COLOR_YELLOW        0xFFE0
-#define COLOR_CYAN          0x07FF
-#define COLOR_MAGENTA       0xF81F
-#define COLOR_ORANGE        0xFD20
-#define COLOR_PINK          0xFC18
-#define COLOR_PURPLE        0x8010
-#define COLOR_GRAY          0x8410
-#define COLOR_DARK_GRAY     0x4208
-#define COLOR_LIGHT_GRAY    0xC618
-#define COLOR_NAVY          0x0010
-#define COLOR_PACMAN_YELLOW 0xFFE0
-#define COLOR_GHOST_RED     0xF800
-#define COLOR_GHOST_PINK    0xFC18
-#define COLOR_GHOST_CYAN    0x07FF
-#define COLOR_GHOST_ORANGE  0xFD20
-#define COLOR_DOT_WHITE     0xFFFF
-#define COLOR_POWER_PELLET  0xFFE0
-#define COLOR_MAZE_BLUE     0x001F
+/* Pixelwave palette — converted to RGB565 */
+/*   #060026 → 0x0004   dark navy       */
+/*   #fff056 → 0xFF8A   bright yellow   */
+/*   #0170fe → 0x039F   bright blue     */
+/*   #00125e → 0x008B   dark blue       */
+/*   #ffd156 → 0xFE8A   warm yellow     */
+/*   #090038 → 0x0807   deep purple     */
+/*   #ff9156 → 0xFC8A   orange          */
+/*   #ff5d56 → 0xFAEA   coral red       */
+/*   #ff549d → 0xFAB3   hot pink        */
+
+/* Backgrounds */
+#define COLOR_BLACK         0x0807  /* deep purple bg */
+#define COLOR_NAVY          0x0004  /* dark navy alt  */
+#define COLOR_DARK_GRAY     0x008B  /* dark blue      */
+#define COLOR_GRAY          0x008B  /* dark blue      */
+#define COLOR_MAZE_BLUE     0x008B  /* dark blue      */
+
+/* Text / bright elements */
+#define COLOR_WHITE         0xFF8A  /* bright yellow  */
+#define COLOR_YELLOW        0xFE8A  /* warm yellow    */
+#define COLOR_LIGHT_GRAY    0xFE8A  /* warm yellow    */
+#define COLOR_PACMAN_YELLOW 0xFF8A  /* bright yellow  */
+#define COLOR_DOT_WHITE     0xFFFF  /* pure white     */
+#define COLOR_POWER_PELLET  0xFE8A  /* warm yellow    */
+
+/* Accents */
+#define COLOR_RED           0xFAEA  /* coral red      */
+#define COLOR_BLUE          0x039F  /* bright blue    */
+#define COLOR_CYAN          0x039F  /* bright blue    */
+#define COLOR_GREEN         0x039F  /* bright blue (no green in palette) */
+#define COLOR_ORANGE        0xFC8A  /* orange         */
+#define COLOR_PINK          0xFAB3  /* hot pink       */
+#define COLOR_MAGENTA       0xFAB3  /* hot pink       */
+#define COLOR_PURPLE        0xFAB3  /* hot pink       */
+
+/* Ghosts */
+#define COLOR_GHOST_RED     0xFAEA  /* coral red      */
+#define COLOR_GHOST_PINK    0xFAB3  /* hot pink       */
+#define COLOR_GHOST_CYAN    0x039F  /* bright blue    */
+#define COLOR_GHOST_ORANGE  0xFC8A  /* orange         */
 
 /* Direction constants */
 #define DIR_RIGHT 0

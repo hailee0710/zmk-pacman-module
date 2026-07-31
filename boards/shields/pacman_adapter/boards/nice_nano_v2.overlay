@@ -1,11 +1,7 @@
 /*
  * nice!nano v2 board-specific overrides
  *
- * P0.17 is the onboard charge LED on nice!nano v2.
- * Move display RESET to P0.05 (D3) to avoid conflict.
- *
- * To use a different pin, override reset-gpios in your own overlay.
+ * All display pins now use P1.xx bank and P0.09 for CS,
+ * avoiding conflicts with onboard charge LED (P0.17).
+ * No overrides needed — kept as a placeholder for future use.
  */
-&st7789p3 {
-    reset-gpios = <&gpio0 5 GPIO_ACTIVE_LOW>;
-};
