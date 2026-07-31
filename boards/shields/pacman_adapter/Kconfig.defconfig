@@ -12,8 +12,8 @@ config DISPLAY
 config LVGL
   default y
 
-config LVGL_COLOR_DEPTH
-  default 16
+config LVGL_COLOR_DEPTH_16
+  default y
 
 config LVGL_HOR_RES
   default 320
