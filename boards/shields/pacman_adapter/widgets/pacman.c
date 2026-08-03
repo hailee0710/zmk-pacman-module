@@ -35,15 +35,32 @@ static uint16_t batt_color(uint8_t pct) {
     return COLOR_RED;
 }
 
-/* Draw a small battery icon at (x,y) */
+/* Draw a small battery icon at (x,y). pct == 0 means "no report has ever
+ * arrived from this half" (see battery_status.c) — draw a slashed-out
+ * icon instead of an empty one, so it reads as "not connected" rather
+ * than as a battery that's merely dead or a render glitch. */
 static void draw_battery(uint16_t x, uint16_t y, uint8_t pct) {
     uint16_t bw = 22, bh = 12, nip_w = 3, nip_h = 6;
-    display_draw_rect(x, y, bw + 1, bh + 1, COLOR_WHITE);
-    display_fill_rect(x + bw + 1, y + (bh - nip_h) / 2, nip_w, nip_h, COLOR_WHITE);
+    uint16_t outline = pct > 0 ? COLOR_WHITE : COLOR_GRAY;
+    display_draw_rect(x, y, bw + 1, bh + 1, outline);
+    display_fill_rect(x + bw + 1, y + (bh - nip_h) / 2, nip_w, nip_h, outline);
     if (pct > 0) {
         uint16_t fw = (uint16_t)(bw - 2) * (pct > 100 ? 100 : pct) / 100;
         if (fw < 1) fw = 1;
         display_fill_rect(x + 1, y + 1, fw, bh - 2, batt_color(pct));
+    } else {
+        display_draw_line(x + 1, y + 1, x + bw - 1, y + bh - 1, COLOR_GRAY);
+    }
+}
+
+static void render_battery_slot(uint16_t icon_x, uint16_t text_x, uint8_t pct) {
+    char buf[8];
+    draw_battery(icon_x, 6, pct);
+    if (pct > 0) {
+        snprintf(buf, sizeof(buf), "%u%%", pct);
+        display_write_text(text_x, 4, buf, batt_color(pct), COLOR_BLACK, 1);
+    } else {
+        display_write_text(text_x, 4, "N/C", COLOR_GRAY, COLOR_BLACK, 1);
     }
 }
 
@@ -145,17 +162,11 @@ void pacman_status_tick(pacman_status_t *st) {
 /* ---- Rendering ---- */
 
 static void render_top_bar(pacman_status_t *st) {
-    char buf[16];
     display_fill_rect(0, 0, SCREEN_W, TOP_BAR_H, COLOR_BLACK);
 
-    /* Left battery */
-    draw_battery(4, 6, st->left_battery);
-    snprintf(buf, sizeof(buf), "%u%%", st->left_battery);
-    display_write_text(30, 4, buf, batt_color(st->left_battery), COLOR_BLACK, 1);
-
-    draw_battery(68, 6, st->right_battery);
-    snprintf(buf, sizeof(buf), "%u%%", st->right_battery);
-    display_write_text(94, 4, buf, batt_color(st->right_battery), COLOR_BLACK, 1);
+    /* Left / right battery */
+    render_battery_slot(4, 30, st->left_battery);
+    render_battery_slot(68, 94, st->right_battery);
 
     /* Title */
     display_write_text(120, 4, "PACMAN", COLOR_PACMAN_YELLOW, COLOR_BLACK, 1);

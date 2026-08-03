@@ -9,6 +9,12 @@
  * only reaches the dongle via zmk_peripheral_battery_state_changed
  * (source 0/1 = left/right), not zmk_battery_state_of_charge() (that
  * queries the dongle's own SoC and used to get reported as both halves).
+ *
+ * ZMK's central.c pushes this same event with a level of 0 the moment a
+ * half disconnects — and a half that's genuinely at 0% charge can't be
+ * transmitting BLE at all — so 0 is an unambiguous "not connected"
+ * sentinel here, never a real reading. Level starts at 0 for the same
+ * reason: no report has arrived yet.
  */
 
 #include <zephyr/kernel.h>
@@ -19,8 +25,8 @@
 LOG_MODULE_REGISTER(battery_status, CONFIG_DISPLAY_LOG_LEVEL);
 
 void battery_status_init(battery_status_t *st) {
-    st->level_pct[0] = 100;
-    st->level_pct[1] = 100;
+    st->level_pct[0] = 0;
+    st->level_pct[1] = 0;
     st->charging[0] = false;
     st->charging[1] = false;
 }

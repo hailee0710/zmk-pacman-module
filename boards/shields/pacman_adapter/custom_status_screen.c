@@ -190,8 +190,6 @@ lv_obj_t *zmk_display_status_screen(void) {
     output_status_init(&output_st);
     wpm_init(&wpm_st);
 
-    pacman_status_set_batteries(&pacman_st, 100, 100);
-
     /* Seed each widget listener's state now that zmk core is queryable —
      * this immediately calls refresh_output_status() etc., so host
      * connection state doesn't need a separate placeholder default. */
