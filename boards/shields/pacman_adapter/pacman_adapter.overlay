@@ -7,6 +7,13 @@
     };
 };
 
+&uicr {
+    /* CS pin (P0.09) defaults to the NFC antenna function on nRF52840;
+     * this releases it for GPIO use. Replaces the removed
+     * CONFIG_NFCT_PINS_AS_GPIOS Kconfig symbol (Zephyr 4.1+). */
+    nfct-pins-as-gpios;
+};
+
 &pinctrl {
     spi0_default: spi0_default {
         group1 {
