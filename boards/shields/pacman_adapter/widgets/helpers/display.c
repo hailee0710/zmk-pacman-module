@@ -27,6 +27,18 @@ static const struct device *disp_dev;
 static lv_disp_t *lvgl_display;
 static lv_obj_t *flush_img;
 
+/* CONFIG_LV_COLOR_16_SWAP=y (see pacman_adapter.conf) exists so the ST7789
+ * driver can write LVGL's render buffer straight to SPI with no per-pixel
+ * swap — LVGL's own color pipeline applies that swap automatically. This
+ * framebuffer bypasses that pipeline (it's handed to LVGL as a pre-baked
+ * LV_IMG_CF_TRUE_COLOR image, copied through verbatim), so every plain
+ * RGB565 value from display.h's COLOR_* constants has to be swapped here,
+ * at the point it's actually stored, or every color reaches the panel
+ * byte-reversed. */
+static inline uint16_t wire_color(uint16_t rgb565) {
+    return (uint16_t)((rgb565 >> 8) | (rgb565 << 8));
+}
+
 /* ---- Internal: fast horizontal line in framebuffer ----
  * x/y/w are signed: callers derive them from center-radius arithmetic
  * (e.g. cx - r) that legitimately goes negative for shapes near the
@@ -38,13 +50,14 @@ static inline void fb_hline(int16_t x, int16_t y, int16_t w, uint16_t color) {
     if (x < 0) { w += x; x = 0; }
     if (x >= DISPLAY_W || w <= 0) return;
     if (x + w > DISPLAY_W) w = DISPLAY_W - x;
+    uint16_t wc = wire_color(color);
     uint16_t *dst = &fb[y * DISPLAY_W + x];
-    for (int16_t i = 0; i < w; i++) dst[i] = color;
+    for (int16_t i = 0; i < w; i++) dst[i] = wc;
 }
 
 static inline void fb_pixel(int16_t x, int16_t y, uint16_t color) {
     if (x >= 0 && x < DISPLAY_W && y >= 0 && y < DISPLAY_H)
-        fb[y * DISPLAY_W + x] = color;
+        fb[y * DISPLAY_W + x] = wire_color(color);
 }
 
 /* ---- Init ---- */
@@ -69,7 +82,8 @@ void display_begin_frame(void) {
 /* ---- Drawing primitives ---- */
 
 void display_fill(uint16_t color) {
-    for (uint32_t i = 0; i < DISPLAY_W * DISPLAY_H; i++) fb[i] = color;
+    uint16_t wc = wire_color(color);
+    for (uint32_t i = 0; i < DISPLAY_W * DISPLAY_H; i++) fb[i] = wc;
 }
 
 void display_fill_rect(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t color) {
