@@ -56,19 +56,6 @@ static const struct device *display_dev;
  */
 static void render_tick_cb(lv_timer_t *timer) {
     ARG_UNUSED(timer);
-
-    /* DEBUG: fill screen white to verify rendering pipeline */
-    static bool debug_once = true;
-    if (debug_once) {
-        display_fill(COLOR_DOT_WHITE); /* pure white 0xFFFF */
-        display_inv_zone_top();
-        display_inv_zone_main();
-        display_inv_zone_bottom();
-        display_flush();
-        debug_once = false;
-        return;
-    }
-
     wpm_tick(&wpm_st);
     pacman_status_set_wpm(&pacman_st, wpm_get_current(&wpm_st));
     pacman_status_tick(&pacman_st);
