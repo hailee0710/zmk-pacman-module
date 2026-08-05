@@ -35,32 +35,35 @@ static uint16_t batt_color(uint8_t pct) {
     return COLOR_RED;
 }
 
-/* Draw a small battery icon at (x,y). pct == 0 means "no report has ever
- * arrived from this half" (see battery_status.c) — draw a slashed-out
- * icon instead of an empty one, so it reads as "not connected" rather
- * than as a battery that's merely dead or a render glitch. */
-static void draw_battery(uint16_t x, uint16_t y, uint8_t pct) {
-    uint16_t bw = 22, bh = 12, nip_w = 3, nip_h = 6;
-    uint16_t outline = pct > 0 ? COLOR_WHITE : COLOR_GRAY;
-    display_draw_rect(x, y, bw + 1, bh + 1, outline);
-    display_fill_rect(x + bw + 1, y + (bh - nip_h) / 2, nip_w, nip_h, outline);
-    if (pct > 0) {
-        uint16_t fw = (uint16_t)(bw - 2) * (pct > 100 ? 100 : pct) / 100;
-        if (fw < 1) fw = 1;
-        display_fill_rect(x + 1, y + 1, fw, bh - 2, batt_color(pct));
-    } else {
-        display_draw_line(x + 1, y + 1, x + bw - 1, y + bh - 1, COLOR_GRAY);
-    }
-}
+/* Vertical battery icon at (x, y).
+ * Body w=14 h=20, nip w=6 h=3 on top.
+ * Fill from bottom up based on percentage.
+ * pct==0: empty outline with diagonal strike (not connected). */
+static void draw_battery_vertical(uint16_t x, uint16_t y, uint8_t pct) {
+    uint16_t bw = 14, bh = 20, nip_w = 6, nip_h = 3;
+    uint16_t nip_x = x + (bw - nip_w) / 2;
 
-static void render_battery_slot(uint16_t icon_x, uint16_t text_x, uint8_t pct) {
-    char buf[8];
-    draw_battery(icon_x, 6, pct);
     if (pct > 0) {
-        snprintf(buf, sizeof(buf), "%u%%", pct);
-        display_write_text(text_x, 4, buf, batt_color(pct), COLOR_BLACK, 1);
+        uint16_t outline = COLOR_WHITE;
+        /* Nip */
+        display_fill_rect(nip_x, y, nip_w, nip_h + 1, outline);
+        /* Body outline */
+        display_draw_rect(x, y + nip_h, bw + 1, bh + 1, outline);
+        /* Fill from bottom — interior is (bw-1)×(bh-1) inside 1px border */
+        uint8_t cpct = pct > 100 ? 100 : pct;
+        uint16_t iw = bw - 1, ih = bh - 1;
+        uint16_t fh = (uint16_t)ih * cpct / 100;
+        if (fh < 1 && cpct > 0) fh = 1;
+        uint16_t fill_color = batt_color(pct);
+        display_fill_rect(x + 1, y + nip_h + 1 + ih - fh, iw, fh, fill_color);
     } else {
-        display_write_text(text_x, 4, "N/C", COLOR_GRAY, COLOR_BLACK, 1);
+        uint16_t outline = COLOR_ORANGE;
+        /* Nip */
+        display_draw_rect(nip_x, y, nip_w, nip_h + 1, outline);
+        /* Body outline */
+        display_draw_rect(x, y + nip_h, bw + 1, bh + 1, outline);
+        /* Diagonal strike */
+        display_draw_line(x + 1, y + nip_h + 1, x + bw, y + nip_h + bh, COLOR_ORANGE);
     }
 }
 
@@ -81,10 +84,20 @@ static void spawn(pacman_status_t *st) {
     int8_t idx = find_slot(st);
     if (idx < 0) return;
     pacman_dot_t *d = &st->dots[idx];
+
+    /* Find rightmost active dot to maintain consistent spacing */
+    int16_t rightmost = DOT_SPAWN_X - DOT_SPACING;
+    for (int i = 0; i < DOT_MAX_COUNT; i++) {
+        if (st->dots[i].active && st->dots[i].x > rightmost) {
+            rightmost = st->dots[i].x;
+        }
+    }
+
     d->active   = true;
     d->is_ghost = is_ghost_zone(st->current_wpm);
-    d->x        = DOT_SPAWN_X;
-    d->speed    = wpm_to_speed(st->current_wpm);
+    d->x        = rightmost + DOT_SPACING;
+    if (d->x < DOT_SPAWN_X) d->x = DOT_SPAWN_X;
+    d->speed    = 0; /* unused — global speed drives all dots equally */
 }
 
 /* ---- Public API ---- */
@@ -105,7 +118,7 @@ void pacman_status_set_host_connection(pacman_status_t *st, bool c, uint8_t t) {
 }
 
 void pacman_status_set_batteries(pacman_status_t *st, uint8_t l, uint8_t r) {
-    st->left_battery = l; st->right_battery = r; st->dirty_zones |= DIRTY_TOP;
+    st->left_battery = l; st->right_battery = r; st->dirty_zones |= DIRTY_BOTTOM;
 }
 
 void pacman_status_set_layer(pacman_status_t *st, const char *name) {
@@ -135,12 +148,13 @@ void pacman_status_tick(pacman_status_t *st) {
 
     bool any_dot_active = false;
 
-    /* Move dots */
+    /* Move dots — all at same global speed driven by current WPM */
+    uint8_t global_speed = wpm_to_speed(st->current_wpm);
     for (int i = 0; i < DOT_MAX_COUNT; i++) {
         if (!st->dots[i].active) continue;
         any_dot_active = true;
         pacman_dot_t *d = &st->dots[i];
-        d->x -= d->speed;
+        d->x -= global_speed;
         if (d->x <= DOT_EAT_X) {
             d->active = false;
         }
@@ -167,37 +181,32 @@ void pacman_status_tick(pacman_status_t *st) {
 static void render_top_bar(pacman_status_t *st) {
     display_fill_rect(0, 0, SCREEN_W, TOP_BAR_H, COLOR_BLACK);
 
-    /* Left / right battery */
-    render_battery_slot(4, 30, st->left_battery);
-    render_battery_slot(68, 94, st->right_battery);
+    /* Layer name — top-left, scale 2 */
+    display_write_text(4, 4, st->layer_name, COLOR_CYAN, COLOR_BLACK, 2);
 
-    /* Title */
-    display_write_text(120, 4, "PACMAN", COLOR_PACMAN_YELLOW, COLOR_BLACK, 1);
-    display_write_text(172, 4, "DONGLE", COLOR_WHITE, COLOR_BLACK, 1);
+    /* Title — centered, scale 2 */
+    display_write_text(100, 4, "PACMAN", COLOR_PACMAN_YELLOW, COLOR_BLACK, 2);
 
-    /* Active layer */
-    display_write_text(208, 4, st->layer_name, COLOR_CYAN, COLOR_BLACK, 1);
-
-    /* Host connection */
+    /* Host connection — right side */
     if (st->host_connected) {
         const char *label; uint16_t color;
         if (st->host_transport == 1) { label = "USB"; color = COLOR_BLUE; }
         else                         { label = "BLE"; color = COLOR_GREEN; }
-        display_draw_filled_circle(260, 12, 4, color);
-        display_write_text(270, 4, label, color, COLOR_BLACK, 1);
+        display_draw_filled_circle(252, 14, 4, color);
+        display_write_text(262, 8, label, color, COLOR_BLACK, 1);
     } else {
-        display_draw_filled_circle(260, 12, 4, COLOR_RED);
-        display_write_text(270, 4, "---", COLOR_RED, COLOR_BLACK, 1);
+        display_draw_filled_circle(252, 14, 4, COLOR_RED);
+        display_write_text(262, 8, "---", COLOR_RED, COLOR_BLACK, 1);
     }
 
-    display_draw_line(0, TOP_BAR_H - 1, SCREEN_W - 1, TOP_BAR_H - 1, COLOR_DARK_GRAY);
+    display_draw_line(0, TOP_BAR_H - 1, SCREEN_W - 1, TOP_BAR_H - 1, COLOR_CYAN);
 }
 
 static void render_zone(pacman_status_t *st) {
     display_fill_rect(0, MAIN_ZONE_Y, SCREEN_W, MAIN_ZONE_H, COLOR_BLACK);
 
-    /* Guide line — start at Pacman's mouth edge, end at dot spawn area */
-    display_draw_line(DOT_EAT_X + 5, MAIN_ZONE_CY, DOT_SPAWN_X - 10, MAIN_ZONE_CY, COLOR_DARK_GRAY);
+    /* Guide line — from Pacman mouth edge to dot spawn area */
+    display_draw_line(DOT_EAT_X + 5, MAIN_ZONE_CY, DOT_SPAWN_X - 10, MAIN_ZONE_CY, COLOR_CYAN);
 
     /* Dots + ghosts flowing right-to-left */
     for (int i = 0; i < DOT_MAX_COUNT; i++) {
@@ -214,35 +223,58 @@ static void render_zone(pacman_status_t *st) {
     display_draw_pacman(PACMAN_CX, PACMAN_CY, PACMAN_RADIUS, DIR_RIGHT, st->mouth_frame,
                         COLOR_PACMAN_YELLOW);
 
-    display_draw_line(0, BOTTOM_BAR_Y - 1, SCREEN_W - 1, BOTTOM_BAR_Y - 1, COLOR_DARK_GRAY);
+    display_draw_line(0, BOTTOM_BAR_Y - 1, SCREEN_W - 1, BOTTOM_BAR_Y - 1, COLOR_CYAN);
 }
 
 static void render_bottom_bar(pacman_status_t *st) {
-    char buf[32];
+    char buf[8];
     display_fill_rect(0, BOTTOM_BAR_Y, SCREEN_W, BOTTOM_BAR_H, COLOR_BLACK);
 
-    /* WPM bar */
-    uint16_t bx = 4, by = BOTTOM_BAR_Y + 5, bw = 200, bh = 10;
-    display_draw_rect(bx, by, bw + 1, bh + 1, COLOR_DARK_GRAY);
+    /* 4 equal areas × 80px, full-width edge to edge */
+    uint16_t by = BOTTOM_BAR_Y;
 
-    uint16_t wpm = (st->current_wpm > 120) ? 120 : st->current_wpm;
-    uint16_t fw = (uint16_t)bw * wpm / 120;
-    uint16_t fc = (wpm >= WPM_GHOST_THRESHOLD) ? COLOR_GHOST_RED
-                : (wpm > 40)                   ? COLOR_PACMAN_YELLOW
-                :                                COLOR_GREEN;
-    if (fw > 0) display_fill_rect(bx + 1, by + 1, fw, bh - 1, fc);
+    /* Thin cyan dividers between areas */
+    for (uint8_t i = 1; i < 4; i++) {
+        uint16_t dx = i * 80;
+        display_draw_line(dx, by + 4, dx, by + BOTTOM_BAR_H - 4, COLOR_CYAN);
+    }
 
-    /* Ghost threshold marker */
-    uint16_t mk = bx + (uint16_t)bw * WPM_GHOST_THRESHOLD / 120;
-    display_draw_line(mk, by - 2, mk, by + bh + 2, COLOR_GHOST_RED);
-    snprintf(buf, sizeof(buf), "%u", WPM_GHOST_THRESHOLD);
-    display_write_text(mk - 10, BOTTOM_BAR_Y + 16, buf, COLOR_GHOST_RED, COLOR_BLACK, 1);
+    /* Area 1 (0-79): left battery */
+    uint16_t a1_cx = 40;
+    uint16_t batt_x1 = a1_cx - 7;
+    uint16_t batt_y = by + 8;
+    draw_battery_vertical(batt_x1, batt_y, st->left_battery);
+    if (st->left_battery > 0) {
+        snprintf(buf, sizeof(buf), "%u%%", st->left_battery);
+        display_write_text(batt_x1 + 20, batt_y + 7, buf,
+                           batt_color(st->left_battery), COLOR_BLACK, 2);
+    } else {
+        display_write_text(batt_x1 + 20, batt_y + 7, "--",
+                           COLOR_ORANGE, COLOR_BLACK, 2);
+    }
 
-    /* WPM readout */
-    snprintf(buf, sizeof(buf), "WPM:%u", st->current_wpm);
-    display_write_text(212, BOTTOM_BAR_Y + 1, buf, COLOR_WHITE, COLOR_BLACK, 1);
-    snprintf(buf, sizeof(buf), "PEAK:%u", st->peak_wpm);
-    display_write_text(212, BOTTOM_BAR_Y + 12, buf, COLOR_GRAY, COLOR_BLACK, 1);
+    /* Area 2 (80-159): right battery */
+    uint16_t a2_cx = 120;
+    uint16_t batt_x2 = a2_cx - 7;
+    draw_battery_vertical(batt_x2, batt_y, st->right_battery);
+    if (st->right_battery > 0) {
+        snprintf(buf, sizeof(buf), "%u%%", st->right_battery);
+        display_write_text(batt_x2 + 20, batt_y + 7, buf,
+                           batt_color(st->right_battery), COLOR_BLACK, 2);
+    } else {
+        display_write_text(batt_x2 + 20, batt_y + 7, "--",
+                           COLOR_ORANGE, COLOR_BLACK, 2);
+    }
+
+    /* Area 3 (160-239): WPM */
+    display_write_text(193, by + 2, "WPM", COLOR_WHITE, COLOR_BLACK, 1);
+    snprintf(buf, sizeof(buf), "%u", st->current_wpm);
+    display_write_text(185, by + 11, buf, COLOR_WHITE, COLOR_BLACK, 3);
+
+    /* Area 4 (240-319): PEAK */
+    display_write_text(270, by + 2, "PEAK", COLOR_CYAN, COLOR_BLACK, 1);
+    snprintf(buf, sizeof(buf), "%u", st->peak_wpm);
+    display_write_text(258, by + 11, buf, COLOR_CYAN, COLOR_BLACK, 3);
 }
 
 void pacman_status_render(pacman_status_t *st) {

@@ -23,7 +23,7 @@ LOG_MODULE_REGISTER(display_helpers, CONFIG_DISPLAY_LOG_LEVEL);
 
 /* Full-screen framebuffer (320 × 172 × 2 bytes = 110,080 bytes).
  * Three LVGL image objects on lv_layer_top() each point into a different
- * horizontal band of this buffer: top (0-23), main (24-147), bottom (148-171).
+ * horizontal band of this buffer: top (0-35), main (36-131), bottom (132-171).
  * When a zone's content changes, only that zone's image is invalidated so
  * lv_refr_now() sends just those rows over SPI instead of the full 172. */
 static uint16_t fb[DISPLAY_W * DISPLAY_H];

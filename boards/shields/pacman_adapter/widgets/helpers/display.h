@@ -97,13 +97,13 @@ void display_draw_power_pellet(int16_t cx, int16_t cy, uint8_t radius,
  * readout changes, only the 24-row bottom bar (14 % of the screen) goes
  * over SPI instead of the full 172-row framebuffer.
  *
- * Kept in sync with pacman.h: TOP_BAR_H=24, MAIN_ZONE_H=124, BOTTOM_BAR_H=24 */
+ * Kept in sync with pacman.h: TOP_BAR_H=36, MAIN_ZONE_H=96, BOTTOM_BAR_H=40 */
 #define DISPLAY_ZONE_TOP_Y     0
-#define DISPLAY_ZONE_TOP_H    24
-#define DISPLAY_ZONE_MAIN_Y   24
-#define DISPLAY_ZONE_MAIN_H  124
-#define DISPLAY_ZONE_BOTTOM_Y 148
-#define DISPLAY_ZONE_BOTTOM_H  24
+#define DISPLAY_ZONE_TOP_H    36
+#define DISPLAY_ZONE_MAIN_Y   36
+#define DISPLAY_ZONE_MAIN_H   96
+#define DISPLAY_ZONE_BOTTOM_Y 132
+#define DISPLAY_ZONE_BOTTOM_H  40
 
 void display_begin_frame(void);
 void display_flush(void);
