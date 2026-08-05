@@ -213,7 +213,7 @@ static int st7789p3_write(const struct device *dev, const uint16_t x, const uint
 
     size_t buf_size = (size_t)desc->width * desc->height * 2;
     if (desc->buf_size < buf_size) {
-        LOG_ERR("Buffer too small (%d < %zu)", desc->buf_size, buf_size);
+        LOG_ERR("Buffer too small (%zu < %zu)", desc->buf_size, buf_size);
         return -EINVAL;
     }
 

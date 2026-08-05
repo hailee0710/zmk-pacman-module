@@ -9,8 +9,6 @@
 #include <string.h>
 #include <zephyr/kernel.h>
 
-#include <zmk/keymap.h>
-
 #include "layer_status.h"
 
 void layer_status_init(layer_status_t *st) {
@@ -19,8 +17,7 @@ void layer_status_init(layer_status_t *st) {
     st->changed = false;
 }
 
-void layer_state_update(layer_status_t *st) {
-    uint8_t layer = zmk_keymap_highest_layer_active();
+void layer_state_update(layer_status_t *st, uint8_t layer) {
     if (layer != st->active_layer) {
         st->active_layer = layer;
         st->changed = true;

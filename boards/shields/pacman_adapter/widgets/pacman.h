@@ -46,6 +46,12 @@
 #define DOT_SPEED_MAX       5
 #define WPM_GHOST_THRESHOLD 80
 
+/* Dirty zone bits — track which screen bands need redraw.
+ * Kept in sync with display.h zone layout. */
+#define DIRTY_TOP    0x01
+#define DIRTY_MAIN   0x02
+#define DIRTY_BOTTOM 0x04
+
 typedef struct {
     int16_t  x;
     bool     active;
@@ -72,7 +78,7 @@ typedef struct {
     char     layer_name[8];
 
     const struct device *dev;
-    bool dirty;
+    uint8_t dirty_zones;   /* bitmask of DIRTY_TOP | DIRTY_MAIN | DIRTY_BOTTOM */
     bool initialized;
 } pacman_status_t;
 

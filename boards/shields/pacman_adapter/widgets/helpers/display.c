@@ -21,11 +21,15 @@
 
 LOG_MODULE_REGISTER(display_helpers, CONFIG_DISPLAY_LOG_LEVEL);
 
-/* Full-screen framebuffer (320 × 172 × 2 bytes = 110,080 bytes) */
+/* Full-screen framebuffer (320 × 172 × 2 bytes = 110,080 bytes).
+ * Three LVGL image objects on lv_layer_top() each point into a different
+ * horizontal band of this buffer: top (0-23), main (24-147), bottom (148-171).
+ * When a zone's content changes, only that zone's image is invalidated so
+ * lv_refr_now() sends just those rows over SPI instead of the full 172. */
 static uint16_t fb[DISPLAY_W * DISPLAY_H];
 static const struct device *disp_dev;
 static lv_disp_t *lvgl_display;
-static lv_obj_t *flush_img;
+static lv_obj_t *img_top, *img_main, *img_bottom;
 
 /* CONFIG_LV_COLOR_16_SWAP=y (see pacman_adapter.conf) exists so the ST7789
  * driver can write LVGL's render buffer straight to SPI with no per-pixel
@@ -69,8 +73,42 @@ int display_init(const struct device *dev) {
         return -ENODEV;
     }
     memset(fb, 0, sizeof(fb));
-    flush_img = lv_img_create(lv_layer_top());
-    lv_obj_set_pos(flush_img, 0, 0);
+
+    /* Three zoned image objects — each points to its horizontal band of fb[].
+     * Image sources are set once here; framebuffer content is updated in-place
+     * and LVGL re-reads from fb[] on each invalidation. */
+    static lv_img_dsc_t dsc_top, dsc_main, dsc_bottom;
+
+    dsc_top.header.cf = LV_IMG_CF_TRUE_COLOR;
+    dsc_top.header.w  = DISPLAY_W;
+    dsc_top.header.h  = DISPLAY_ZONE_TOP_H;
+    dsc_top.data_size = DISPLAY_W * DISPLAY_ZONE_TOP_H * 2;
+    dsc_top.data      = (const uint8_t *)&fb[DISPLAY_ZONE_TOP_Y * DISPLAY_W];
+
+    dsc_main.header.cf = LV_IMG_CF_TRUE_COLOR;
+    dsc_main.header.w  = DISPLAY_W;
+    dsc_main.header.h  = DISPLAY_ZONE_MAIN_H;
+    dsc_main.data_size = DISPLAY_W * DISPLAY_ZONE_MAIN_H * 2;
+    dsc_main.data      = (const uint8_t *)&fb[DISPLAY_ZONE_MAIN_Y * DISPLAY_W];
+
+    dsc_bottom.header.cf = LV_IMG_CF_TRUE_COLOR;
+    dsc_bottom.header.w  = DISPLAY_W;
+    dsc_bottom.header.h  = DISPLAY_ZONE_BOTTOM_H;
+    dsc_bottom.data_size = DISPLAY_W * DISPLAY_ZONE_BOTTOM_H * 2;
+    dsc_bottom.data      = (const uint8_t *)&fb[DISPLAY_ZONE_BOTTOM_Y * DISPLAY_W];
+
+    img_top    = lv_img_create(lv_layer_top());
+    lv_obj_set_pos(img_top, 0, DISPLAY_ZONE_TOP_Y);
+    lv_img_set_src(img_top, &dsc_top);
+
+    img_main   = lv_img_create(lv_layer_top());
+    lv_obj_set_pos(img_main, 0, DISPLAY_ZONE_MAIN_Y);
+    lv_img_set_src(img_main, &dsc_main);
+
+    img_bottom = lv_img_create(lv_layer_top());
+    lv_obj_set_pos(img_bottom, 0, DISPLAY_ZONE_BOTTOM_Y);
+    lv_img_set_src(img_bottom, &dsc_bottom);
+
     LOG_INF("Framebuffer ready (%dx%d, %u bytes)", DISPLAY_W, DISPLAY_H, (unsigned)sizeof(fb));
     return 0;
 }
@@ -295,18 +333,21 @@ void display_draw_power_pellet(int16_t cx, int16_t cy, uint8_t r,
     else       display_draw_filled_circle(cx, cy, r, color);
 }
 
-/* ---- Flush framebuffer to display ---- */
+/* ---- Flush framebuffer to display ----
+ * Image sources are set once in display_init(). Each zone's content is
+ * drawn directly into fb[]. To send updated rows to the panel:
+ *   1. Render into fb[] (any drawing primitive).
+ *   2. Call display_inv_zone_*() for each zone that was touched.
+ *   3. Call display_flush() once — lv_refr_now() sends only the
+ *      invalidated zones' rows over SPI.
+ *
+ * display_flush() alone (after display_inv_zone_top + main + bottom)
+ * is equivalent to a full-screen refresh. */
+
+void display_inv_zone_top(void)    { lv_obj_invalidate(img_top); }
+void display_inv_zone_main(void)   { lv_obj_invalidate(img_main); }
+void display_inv_zone_bottom(void) { lv_obj_invalidate(img_bottom); }
 
 void display_flush(void) {
-    static lv_img_dsc_t img_dsc;
-    img_dsc.header.always_zero = 0;
-    img_dsc.header.reserved    = 0;
-    img_dsc.header.cf          = LV_IMG_CF_TRUE_COLOR;
-    img_dsc.header.w           = DISPLAY_W;
-    img_dsc.header.h           = DISPLAY_H;
-    img_dsc.data_size          = sizeof(fb);
-    img_dsc.data               = (const uint8_t *)fb;
-
-    lv_img_set_src(flush_img, &img_dsc);
     lv_refr_now(lvgl_display);
 }

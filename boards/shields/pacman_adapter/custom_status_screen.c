@@ -19,6 +19,7 @@
 #include <lvgl.h>
 
 #include <zmk/display.h>
+#include <zmk/display/status_screen.h>
 #include <zmk/ble.h>
 #include <zmk/events/ble_active_profile_changed.h>
 #include <zmk/events/usb_conn_state_changed.h>
@@ -58,7 +59,7 @@ static void render_tick_cb(lv_timer_t *timer) {
     wpm_tick(&wpm_st);
     pacman_status_set_wpm(&pacman_st, wpm_get_current(&wpm_st));
     pacman_status_tick(&pacman_st);
-    if (pacman_st.dirty) {
+    if (pacman_st.dirty_zones) {
         pacman_status_render(&pacman_st);
     }
 }
@@ -141,12 +142,11 @@ ZMK_SUBSCRIPTION(cs_batt, zmk_peripheral_battery_state_changed);
 
 static uint8_t layer_get_state(const zmk_event_t *eh) {
     ARG_UNUSED(eh);
-    layer_state_update(&layer_st);
-    return layer_get_active(&layer_st);
+    return zmk_keymap_highest_layer_active();
 }
 
 static void layer_update_cb(uint8_t layer) {
-    ARG_UNUSED(layer);
+    layer_state_update(&layer_st, layer);
     pacman_status_set_layer(&pacman_st, layer_get_name(&layer_st));
 }
 
@@ -208,5 +208,3 @@ lv_obj_t *zmk_display_status_screen(void) {
      * needs to exist for lv_scr_load() to have something to load. */
     return lv_obj_create(NULL);
 }
-
-const struct device *custom_status_screen_get_display(void) { return display_dev; }

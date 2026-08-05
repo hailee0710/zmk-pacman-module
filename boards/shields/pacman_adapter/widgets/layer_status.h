@@ -17,6 +17,6 @@ typedef struct {
 } layer_status_t;
 
 void layer_status_init(layer_status_t *st);
-void layer_state_update(layer_status_t *st);
+void layer_state_update(layer_status_t *st, uint8_t layer);
 uint8_t layer_get_active(layer_status_t *st);
 const char *layer_get_name(layer_status_t *st);

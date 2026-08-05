@@ -101,17 +101,17 @@ void pacman_status_init(pacman_status_t *st, const struct device *dev) {
 void pacman_status_set_wpm(pacman_status_t *st, uint8_t wpm) { st->current_wpm = wpm; }
 
 void pacman_status_set_host_connection(pacman_status_t *st, bool c, uint8_t t) {
-    st->host_connected = c; st->host_transport = t; st->dirty = true;
+    st->host_connected = c; st->host_transport = t; st->dirty_zones |= DIRTY_TOP;
 }
 
 void pacman_status_set_batteries(pacman_status_t *st, uint8_t l, uint8_t r) {
-    st->left_battery = l; st->right_battery = r; st->dirty = true;
+    st->left_battery = l; st->right_battery = r; st->dirty_zones |= DIRTY_TOP;
 }
 
 void pacman_status_set_layer(pacman_status_t *st, const char *name) {
     strncpy(st->layer_name, name, sizeof(st->layer_name) - 1);
     st->layer_name[sizeof(st->layer_name) - 1] = '\0';
-    st->dirty = true;
+    st->dirty_zones |= DIRTY_TOP;
 }
 
 void pacman_status_key_pressed(pacman_status_t *st) {
@@ -148,11 +148,14 @@ void pacman_status_tick(pacman_status_t *st) {
 
     if (st->current_wpm > st->peak_wpm) st->peak_wpm = st->current_wpm;
 
-    /* Only mark dirty if something actually changed */
-    if (any_dot_active ||
-        st->mouth_frame != prev_mouth ||
-        st->current_wpm != last_wpm) {
-        st->dirty = true;
+    /* Per-zone dirty tracking: dots + mouth animate in the main zone,
+     * WPM readout and bar live in the bottom zone. Top zone is only
+     * touched by explicit setters (host, battery, layer). */
+    if (any_dot_active || st->mouth_frame != prev_mouth) {
+        st->dirty_zones |= DIRTY_MAIN;
+    }
+    if (st->current_wpm != last_wpm) {
+        st->dirty_zones |= DIRTY_BOTTOM;
     }
 
     prev_mouth = st->mouth_frame;
@@ -243,10 +246,24 @@ static void render_bottom_bar(pacman_status_t *st) {
 }
 
 void pacman_status_render(pacman_status_t *st) {
-    if (!st->dirty || !st->initialized) return;
-    render_top_bar(st);
-    render_zone(st);
-    render_bottom_bar(st);
-    display_flush();    /* single flush per frame — no LVGL allocations during drawing */
-    st->dirty = false;
+    if (!st->dirty_zones || !st->initialized) return;
+
+    /* Render only the zones that changed, then invalidate just those
+     * LVGL image objects so lv_refr_now() sends only the dirty rows
+     * over SPI instead of the full 172-row framebuffer. */
+    if (st->dirty_zones & DIRTY_TOP) {
+        render_top_bar(st);
+        display_inv_zone_top();
+    }
+    if (st->dirty_zones & DIRTY_MAIN) {
+        render_zone(st);
+        display_inv_zone_main();
+    }
+    if (st->dirty_zones & DIRTY_BOTTOM) {
+        render_bottom_bar(st);
+        display_inv_zone_bottom();
+    }
+
+    display_flush();
+    st->dirty_zones = 0;
 }
