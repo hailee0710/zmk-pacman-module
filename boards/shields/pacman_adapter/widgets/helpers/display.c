@@ -190,7 +190,8 @@ void display_draw_filled_circle(int16_t cx, int16_t cy, uint16_t r, uint16_t col
 /* ---- Bitmap text rendering ---- */
 
 void display_write_text(int16_t x, int16_t y, const char *text,
-                        uint16_t color, uint16_t bg_color, uint8_t scale) {
+                        uint16_t color, uint16_t bg_color, uint8_t scale,
+                        uint8_t letter_spacing) {
     if (!text || scale == 0) return;
     int16_t cx = x;
     uint8_t len = (uint8_t)strlen(text);
@@ -218,7 +219,7 @@ void display_write_text(int16_t x, int16_t y, const char *text,
                 }
             }
         }
-        cx += FONT_5x7_W * scale;
+        cx += FONT_5x7_W * scale + letter_spacing;
     }
 }
 

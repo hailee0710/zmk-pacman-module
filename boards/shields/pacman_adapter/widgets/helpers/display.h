@@ -78,7 +78,8 @@ void display_draw_line(int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t 
 void display_draw_circle(int16_t cx, int16_t cy, uint16_t r, uint16_t color);
 void display_draw_filled_circle(int16_t cx, int16_t cy, uint16_t r, uint16_t color);
 void display_write_text(int16_t x, int16_t y, const char *text,
-                        uint16_t color, uint16_t bg_color, uint8_t scale);
+                        uint16_t color, uint16_t bg_color, uint8_t scale,
+                        uint8_t letter_spacing);
 
 /* ---- High-level shapes ---- */
 void display_draw_pacman(int16_t cx, int16_t cy, uint16_t radius,

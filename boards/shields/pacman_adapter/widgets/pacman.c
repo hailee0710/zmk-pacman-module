@@ -182,10 +182,11 @@ static void render_top_bar(pacman_status_t *st) {
     display_fill_rect(0, 0, SCREEN_W, TOP_BAR_H, COLOR_BLACK);
 
     /* Layer name — top-left, scale 2, inset for curved corner */
-    display_write_text(12, 4, st->layer_name, COLOR_CYAN, COLOR_BLACK, 2);
+    display_write_text(12, 4, st->layer_name, COLOR_CYAN, COLOR_BLACK, 2, 0);
 
-    /* Title — centered, scale 2 */
-    display_write_text(100, 4, "PACMAN", COLOR_PACMAN_YELLOW, COLOR_BLACK, 2);
+    /* Title — centered, scale 2, spaced letters */
+    /* 6 chars × 10px + 5 gaps × 4px = 80px. Center: (320-80)/2 = 120 */
+    display_write_text(120, 4, "PACMAN", COLOR_PACMAN_YELLOW, COLOR_BLACK, 2, 4);
 
     /* Host connection — right side, scale 2, orange */
     if (st->host_connected) {
@@ -193,10 +194,10 @@ static void render_top_bar(pacman_status_t *st) {
         if (st->host_transport == 1) label = "USB";
         else                         label = "BLE";
         display_draw_filled_circle(252, 14, 5, COLOR_ORANGE);
-        display_write_text(264, 4, label, COLOR_ORANGE, COLOR_BLACK, 2);
+        display_write_text(264, 4, label, COLOR_ORANGE, COLOR_BLACK, 2, 0);
     } else {
         display_draw_filled_circle(252, 14, 5, COLOR_RED);
-        display_write_text(264, 4, "---", COLOR_RED, COLOR_BLACK, 2);
+        display_write_text(264, 4, "---", COLOR_RED, COLOR_BLACK, 2, 0);
     }
 
     display_draw_line(0, TOP_BAR_H - 1, SCREEN_W - 1, TOP_BAR_H - 1, COLOR_LIGHT_GRAY);
@@ -244,10 +245,10 @@ static void render_bottom_bar(pacman_status_t *st) {
     if (st->left_battery > 0) {
         snprintf(buf, sizeof(buf), "%u%%", st->left_battery);
         display_write_text(batt_x1 + 20, batt_y + 7, buf,
-                           batt_color(st->left_battery), COLOR_BLACK, 2);
+                           batt_color(st->left_battery), COLOR_BLACK, 2, 0);
     } else {
         display_write_text(batt_x1 + 20, batt_y + 7, "--",
-                           COLOR_ORANGE, COLOR_BLACK, 2);
+                           COLOR_ORANGE, COLOR_BLACK, 2, 0);
     }
 
     /* Area 2 (80-159): right battery */
@@ -257,21 +258,21 @@ static void render_bottom_bar(pacman_status_t *st) {
     if (st->right_battery > 0) {
         snprintf(buf, sizeof(buf), "%u%%", st->right_battery);
         display_write_text(batt_x2 + 20, batt_y + 7, buf,
-                           batt_color(st->right_battery), COLOR_BLACK, 2);
+                           batt_color(st->right_battery), COLOR_BLACK, 2, 0);
     } else {
         display_write_text(batt_x2 + 20, batt_y + 7, "--",
-                           COLOR_ORANGE, COLOR_BLACK, 2);
+                           COLOR_ORANGE, COLOR_BLACK, 2, 0);
     }
 
     /* Area 3 (160-239): WPM */
-    display_write_text(193, by + 2, "WPM", COLOR_WHITE, COLOR_BLACK, 1);
+    display_write_text(193, by + 2, "WPM", COLOR_WHITE, COLOR_BLACK, 1, 0);
     snprintf(buf, sizeof(buf), "%u", st->current_wpm);
-    display_write_text(185, by + 11, buf, COLOR_WHITE, COLOR_BLACK, 3);
+    display_write_text(185, by + 11, buf, COLOR_WHITE, COLOR_BLACK, 3, 0);
 
     /* Area 4 (240-319): PEAK */
-    display_write_text(270, by + 2, "PEAK", COLOR_PINK, COLOR_BLACK, 1);
+    display_write_text(270, by + 2, "PEAK", COLOR_PINK, COLOR_BLACK, 1, 0);
     snprintf(buf, sizeof(buf), "%u", st->peak_wpm);
-    display_write_text(258, by + 11, buf, COLOR_PINK, COLOR_BLACK, 3);
+    display_write_text(258, by + 11, buf, COLOR_PINK, COLOR_BLACK, 3, 0);
 }
 
 void pacman_status_render(pacman_status_t *st) {
