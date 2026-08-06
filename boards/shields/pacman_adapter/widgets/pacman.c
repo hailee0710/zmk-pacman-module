@@ -181,32 +181,29 @@ void pacman_status_tick(pacman_status_t *st) {
 static void render_top_bar(pacman_status_t *st) {
     display_fill_rect(0, 0, SCREEN_W, TOP_BAR_H, COLOR_BLACK);
 
-    /* Layer name — top-left, scale 2 */
-    display_write_text(4, 4, st->layer_name, COLOR_CYAN, COLOR_BLACK, 2);
+    /* Layer name — top-left, scale 2, inset for curved corner */
+    display_write_text(12, 4, st->layer_name, COLOR_CYAN, COLOR_BLACK, 2);
 
     /* Title — centered, scale 2 */
     display_write_text(100, 4, "PACMAN", COLOR_PACMAN_YELLOW, COLOR_BLACK, 2);
 
-    /* Host connection — right side */
+    /* Host connection — right side, scale 2, orange */
     if (st->host_connected) {
-        const char *label; uint16_t color;
-        if (st->host_transport == 1) { label = "USB"; color = COLOR_BLUE; }
-        else                         { label = "BLE"; color = COLOR_GREEN; }
-        display_draw_filled_circle(252, 14, 4, color);
-        display_write_text(262, 8, label, color, COLOR_BLACK, 1);
+        const char *label;
+        if (st->host_transport == 1) label = "USB";
+        else                         label = "BLE";
+        display_draw_filled_circle(252, 14, 5, COLOR_ORANGE);
+        display_write_text(264, 4, label, COLOR_ORANGE, COLOR_BLACK, 2);
     } else {
-        display_draw_filled_circle(252, 14, 4, COLOR_RED);
-        display_write_text(262, 8, "---", COLOR_RED, COLOR_BLACK, 1);
+        display_draw_filled_circle(252, 14, 5, COLOR_RED);
+        display_write_text(264, 4, "---", COLOR_RED, COLOR_BLACK, 2);
     }
 
-    display_draw_line(0, TOP_BAR_H - 1, SCREEN_W - 1, TOP_BAR_H - 1, COLOR_CYAN);
+    display_draw_line(0, TOP_BAR_H - 1, SCREEN_W - 1, TOP_BAR_H - 1, COLOR_LIGHT_GRAY);
 }
 
 static void render_zone(pacman_status_t *st) {
     display_fill_rect(0, MAIN_ZONE_Y, SCREEN_W, MAIN_ZONE_H, COLOR_BLACK);
-
-    /* Guide line — from Pacman mouth edge to dot spawn area */
-    display_draw_line(DOT_EAT_X + 5, MAIN_ZONE_CY, DOT_SPAWN_X - 10, MAIN_ZONE_CY, COLOR_CYAN);
 
     /* Dots + ghosts flowing right-to-left */
     for (int i = 0; i < DOT_MAX_COUNT; i++) {
@@ -223,7 +220,7 @@ static void render_zone(pacman_status_t *st) {
     display_draw_pacman(PACMAN_CX, PACMAN_CY, PACMAN_RADIUS, DIR_RIGHT, st->mouth_frame,
                         COLOR_PACMAN_YELLOW);
 
-    display_draw_line(0, BOTTOM_BAR_Y - 1, SCREEN_W - 1, BOTTOM_BAR_Y - 1, COLOR_CYAN);
+    display_draw_line(0, BOTTOM_BAR_Y - 1, SCREEN_W - 1, BOTTOM_BAR_Y - 1, COLOR_LIGHT_GRAY);
 }
 
 static void render_bottom_bar(pacman_status_t *st) {
@@ -233,10 +230,10 @@ static void render_bottom_bar(pacman_status_t *st) {
     /* 4 equal areas × 80px, full-width edge to edge */
     uint16_t by = BOTTOM_BAR_Y;
 
-    /* Thin cyan dividers between areas */
+    /* Thin light-gray dividers between areas */
     for (uint8_t i = 1; i < 4; i++) {
         uint16_t dx = i * 80;
-        display_draw_line(dx, by + 4, dx, by + BOTTOM_BAR_H - 4, COLOR_CYAN);
+        display_draw_line(dx, by + 4, dx, by + BOTTOM_BAR_H - 4, COLOR_LIGHT_GRAY);
     }
 
     /* Area 1 (0-79): left battery */
@@ -272,9 +269,9 @@ static void render_bottom_bar(pacman_status_t *st) {
     display_write_text(185, by + 11, buf, COLOR_WHITE, COLOR_BLACK, 3);
 
     /* Area 4 (240-319): PEAK */
-    display_write_text(270, by + 2, "PEAK", COLOR_CYAN, COLOR_BLACK, 1);
+    display_write_text(270, by + 2, "PEAK", COLOR_PINK, COLOR_BLACK, 1);
     snprintf(buf, sizeof(buf), "%u", st->peak_wpm);
-    display_write_text(258, by + 11, buf, COLOR_CYAN, COLOR_BLACK, 3);
+    display_write_text(258, by + 11, buf, COLOR_PINK, COLOR_BLACK, 3);
 }
 
 void pacman_status_render(pacman_status_t *st) {

@@ -37,7 +37,7 @@
 /* Text / bright elements */
 #define COLOR_WHITE         0xFF8A  /* bright yellow  */
 #define COLOR_YELLOW        0xFE8A  /* warm yellow    */
-#define COLOR_LIGHT_GRAY    0xFE8A  /* warm yellow    */
+#define COLOR_LIGHT_GRAY    0xAD55  /* light gray #aaa */
 #define COLOR_PACMAN_YELLOW 0xFF8A  /* bright yellow  */
 #define COLOR_DOT_WHITE     0xFFFF  /* pure white     */
 #define COLOR_POWER_PELLET  0xFE8A  /* warm yellow    */

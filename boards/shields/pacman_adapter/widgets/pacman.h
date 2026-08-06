@@ -28,10 +28,10 @@
 #define BOTTOM_BAR_H  40
 
 /* Big Pacman */
-#define PACMAN_CX      100
+#define PACMAN_CX      48
 #define PACMAN_CY      MAIN_ZONE_CY
 #define PACMAN_RADIUS  38
-#define PACMAN_MOUTH_X (PACMAN_CX - PACMAN_RADIUS)  /* 62 */
+#define PACMAN_MOUTH_X (PACMAN_CX - PACMAN_RADIUS)  /* 10 */
 
 #define DOT_RADIUS      4
 #define DOT_Y           MAIN_ZONE_CY
