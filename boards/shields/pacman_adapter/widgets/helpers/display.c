@@ -74,10 +74,6 @@ int display_init(const struct device *dev) {
     }
     memset(fb, 0, sizeof(fb));
 
-    /* DEBUG: fill entire framebuffer white — if screen stays black,
-     * LVGL images on lv_layer_top() are never rendered. */
-    for (uint32_t i = 0; i < DISPLAY_W * DISPLAY_H; i++) fb[i] = wire_color(COLOR_DOT_WHITE);
-
     /* Three zoned image objects — each points to its horizontal band of fb[].
      * Image sources are set once here; framebuffer content is updated in-place
      * and LVGL re-reads from fb[] on each invalidation. */
