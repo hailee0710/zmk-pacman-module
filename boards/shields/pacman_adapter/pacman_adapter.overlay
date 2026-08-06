@@ -50,3 +50,9 @@
         dc-gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>;
     };
 };
+
+&uicr {
+    /* CS pin (P0.09) defaults to NFC antenna on nRF52840; release
+     * for GPIO use. Replaces removed CONFIG_NFCT_PINS_AS_GPIOS. */
+    nfct-pins-as-gpios;
+};
