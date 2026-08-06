@@ -23,7 +23,7 @@ LOG_MODULE_REGISTER(display_helpers, CONFIG_DISPLAY_LOG_LEVEL);
 
 /* Full-screen framebuffer (320 × 172 × 2 bytes = 110,080 bytes).
  * Three LVGL image objects on lv_layer_top() each point into a different
- * horizontal band of this buffer: top (0-23), main (24-147), bottom (148-171).
+ * horizontal band of this buffer: top (0-35), main (36-131), bottom (132-171).
  * When a zone's content changes, only that zone's image is invalidated so
  * lv_refr_now() sends just those rows over SPI instead of the full 172. */
 static uint16_t fb[DISPLAY_W * DISPLAY_H];
@@ -73,6 +73,10 @@ int display_init(const struct device *dev) {
         return -ENODEV;
     }
     memset(fb, 0, sizeof(fb));
+
+    /* DEBUG: fill entire framebuffer white — if screen stays black,
+     * LVGL images on lv_layer_top() are never rendered. */
+    for (uint32_t i = 0; i < DISPLAY_W * DISPLAY_H; i++) fb[i] = wire_color(COLOR_DOT_WHITE);
 
     /* Three zoned image objects — each points to its horizontal band of fb[].
      * Image sources are set once here; framebuffer content is updated in-place

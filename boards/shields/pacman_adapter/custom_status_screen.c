@@ -56,6 +56,18 @@ static const struct device *display_dev;
  */
 static void render_tick_cb(lv_timer_t *timer) {
     ARG_UNUSED(timer);
+
+    /* DEBUG: flush white fb for 10 frames (~330ms) without rendering */
+    static int debug_count = 10;
+    if (debug_count > 0) {
+        display_inv_zone_top();
+        display_inv_zone_main();
+        display_inv_zone_bottom();
+        display_flush();
+        debug_count--;
+        return;
+    }
+
     wpm_tick(&wpm_st);
     pacman_status_set_wpm(&pacman_st, wpm_get_current(&wpm_st));
     pacman_status_tick(&pacman_st);

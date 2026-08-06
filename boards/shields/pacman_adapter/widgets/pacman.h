@@ -18,32 +18,33 @@
 #define SCREEN_H  172
 
 #define TOP_BAR_Y     0
-#define TOP_BAR_H     24
+#define TOP_BAR_H     36
 
-#define MAIN_ZONE_Y   24
-#define MAIN_ZONE_H   124
-#define MAIN_ZONE_CY  (MAIN_ZONE_Y + MAIN_ZONE_H / 2)  /* 86 */
+#define MAIN_ZONE_Y   36
+#define MAIN_ZONE_H   96
+#define MAIN_ZONE_CY  (MAIN_ZONE_Y + MAIN_ZONE_H / 2)  /* 84 */
 
-#define BOTTOM_BAR_Y  148
-#define BOTTOM_BAR_H  24
+#define BOTTOM_BAR_Y  132
+#define BOTTOM_BAR_H  40
 
-/* Big Pacman — nearly fills the main zone height */
-#define PACMAN_CX      80
+/* Big Pacman */
+#define PACMAN_CX      100
 #define PACMAN_CY      MAIN_ZONE_CY
-#define PACMAN_RADIUS  52
-#define PACMAN_MOUTH_X (PACMAN_CX - PACMAN_RADIUS)  /* 28 */
+#define PACMAN_RADIUS  38
+#define PACMAN_MOUTH_X (PACMAN_CX - PACMAN_RADIUS)  /* 62 */
 
 #define DOT_RADIUS      4
 #define DOT_Y           MAIN_ZONE_CY
 #define DOT_SPAWN_X     310
 #define DOT_EAT_X       PACMAN_MOUTH_X
 #define DOT_MAX_COUNT   20
+#define DOT_SPACING     18  /* minimum center-to-center pixel gap */
 
 #define GHOST_W  28
 #define GHOST_H  32
 
 #define DOT_SPEED_MIN       1
-#define DOT_SPEED_MAX       5
+#define DOT_SPEED_MAX       8
 #define WPM_GHOST_THRESHOLD 80
 
 /* Dirty zone bits — track which screen bands need redraw.
