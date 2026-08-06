@@ -36,16 +36,16 @@
 #define DOT_RADIUS      4
 #define DOT_Y           MAIN_ZONE_CY
 #define DOT_SPAWN_X     310
-#define DOT_EAT_X       PACMAN_MOUTH_X
+#define DOT_EAT_X       (PACMAN_MOUTH_X + DOT_RADIUS)  /* dot center at mouth edge */
 #define DOT_MAX_COUNT   20
-#define DOT_SPACING     18  /* minimum center-to-center pixel gap */
+#define DOT_SPACING     26  /* minimum center-to-center pixel gap */
 
 #define GHOST_W  28
 #define GHOST_H  32
 
 #define DOT_SPEED_MIN       1
 #define DOT_SPEED_MAX       8
-#define WPM_GHOST_THRESHOLD 80
+#define WPM_GHOST_THRESHOLD 40
 
 /* Dirty zone bits — track which screen bands need redraw.
  * Kept in sync with display.h zone layout. */

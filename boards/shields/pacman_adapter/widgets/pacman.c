@@ -31,7 +31,7 @@ static bool is_ghost_zone(uint8_t wpm) { return wpm >= WPM_GHOST_THRESHOLD; }
 
 static uint16_t batt_color(uint8_t pct) {
     if (pct > 60) return COLOR_GREEN;
-    if (pct > 25) return COLOR_YELLOW;
+    if (pct > 25) return COLOR_BLUE;
     return COLOR_RED;
 }
 
@@ -182,7 +182,7 @@ static void render_top_bar(pacman_status_t *st) {
     display_fill_rect(0, 0, SCREEN_W, TOP_BAR_H, COLOR_BLACK);
 
     /* Layer name — top-left, scale 2, inset for curved corner */
-    display_write_text(12, 4, st->layer_name, COLOR_CYAN, COLOR_BLACK, 2, 0);
+    display_write_text(12, 4, st->layer_name, COLOR_GREEN, COLOR_BLACK, 2, 1);
 
     /* Title — centered, scale 2, spaced letters */
     /* 6 chars × 10px + 5 gaps × 4px = 80px. Center: (320-80)/2 = 120 */
@@ -194,10 +194,10 @@ static void render_top_bar(pacman_status_t *st) {
         if (st->host_transport == 1) label = "USB";
         else                         label = "BLE";
         display_draw_filled_circle(252, 14, 5, COLOR_ORANGE);
-        display_write_text(264, 4, label, COLOR_ORANGE, COLOR_BLACK, 2, 0);
+        display_write_text(264, 4, label, COLOR_ORANGE, COLOR_BLACK, 2, 1);
     } else {
         display_draw_filled_circle(252, 14, 5, COLOR_RED);
-        display_write_text(264, 4, "---", COLOR_RED, COLOR_BLACK, 2, 0);
+        display_write_text(264, 4, "---", COLOR_RED, COLOR_BLACK, 2, 1);
     }
 
     display_draw_line(0, TOP_BAR_H - 1, SCREEN_W - 1, TOP_BAR_H - 1, COLOR_LIGHT_GRAY);
@@ -218,7 +218,7 @@ static void render_zone(pacman_status_t *st) {
     }
 
     /* Big Pacman */
-    display_draw_pacman(PACMAN_CX, PACMAN_CY, PACMAN_RADIUS, DIR_RIGHT, st->mouth_frame,
+    display_draw_pacman(PACMAN_CX, PACMAN_CY, PACMAN_RADIUS, DIR_LEFT, st->mouth_frame,
                         COLOR_PACMAN_YELLOW);
 
     display_draw_line(0, BOTTOM_BAR_Y - 1, SCREEN_W - 1, BOTTOM_BAR_Y - 1, COLOR_LIGHT_GRAY);
@@ -237,30 +237,30 @@ static void render_bottom_bar(pacman_status_t *st) {
         display_draw_line(dx, by + 4, dx, by + BOTTOM_BAR_H - 4, COLOR_LIGHT_GRAY);
     }
 
-    /* Area 1 (0-79): left battery */
-    uint16_t a1_cx = 40;
-    uint16_t batt_x1 = a1_cx - 7;
+    /* Area 1 (0-79): left battery.
+     * Icon 14px + gap 5px + text up to 40px (4 chars "100%" at scale 2) = 59px.
+     * Center in 80px area: start at 10. */
+    uint16_t batt_x1 = 10;
     uint16_t batt_y = by + 8;
     draw_battery_vertical(batt_x1, batt_y, st->left_battery);
     if (st->left_battery > 0) {
         snprintf(buf, sizeof(buf), "%u%%", st->left_battery);
-        display_write_text(batt_x1 + 20, batt_y + 7, buf,
+        display_write_text(batt_x1 + 19, batt_y + 7, buf,
                            batt_color(st->left_battery), COLOR_BLACK, 2, 0);
     } else {
-        display_write_text(batt_x1 + 20, batt_y + 7, "--",
+        display_write_text(batt_x1 + 19, batt_y + 7, "--",
                            COLOR_ORANGE, COLOR_BLACK, 2, 0);
     }
 
     /* Area 2 (80-159): right battery */
-    uint16_t a2_cx = 120;
-    uint16_t batt_x2 = a2_cx - 7;
+    uint16_t batt_x2 = 90;
     draw_battery_vertical(batt_x2, batt_y, st->right_battery);
     if (st->right_battery > 0) {
         snprintf(buf, sizeof(buf), "%u%%", st->right_battery);
-        display_write_text(batt_x2 + 20, batt_y + 7, buf,
+        display_write_text(batt_x2 + 19, batt_y + 7, buf,
                            batt_color(st->right_battery), COLOR_BLACK, 2, 0);
     } else {
-        display_write_text(batt_x2 + 20, batt_y + 7, "--",
+        display_write_text(batt_x2 + 19, batt_y + 7, "--",
                            COLOR_ORANGE, COLOR_BLACK, 2, 0);
     }
 

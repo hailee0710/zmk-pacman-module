@@ -37,7 +37,7 @@
 /* Text / bright elements */
 #define COLOR_WHITE         0xFF8A  /* bright yellow  */
 #define COLOR_YELLOW        0xFE8A  /* warm yellow    */
-#define COLOR_LIGHT_GRAY    0xAD55  /* light gray #aaa */
+#define COLOR_LIGHT_GRAY    0x52AA  /* dim gray #555  */
 #define COLOR_PACMAN_YELLOW 0xFF8A  /* bright yellow  */
 #define COLOR_DOT_WHITE     0xFFFF  /* pure white     */
 #define COLOR_POWER_PELLET  0xFE8A  /* warm yellow    */
@@ -46,7 +46,7 @@
 #define COLOR_RED           0xFAEA  /* coral red      */
 #define COLOR_BLUE          0x039F  /* bright blue    */
 #define COLOR_CYAN          0x039F  /* bright blue    */
-#define COLOR_GREEN         0x039F  /* bright blue (no green in palette) */
+#define COLOR_GREEN         0x0660  /* green #0c0    */
 #define COLOR_ORANGE        0xFC8A  /* orange         */
 #define COLOR_PINK          0xFAB3  /* hot pink       */
 #define COLOR_MAGENTA       0xFAB3  /* hot pink       */
