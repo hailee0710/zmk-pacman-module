@@ -28,7 +28,7 @@
 /*   #ff549d → 0xFAB3   hot pink        */
 
 /* Backgrounds */
-#define COLOR_BLACK         0xF800  /* DEBUG: bright red to verify rendering */
+#define COLOR_BLACK         0x0807  /* deep purple bg */
 #define COLOR_NAVY          0x0004  /* dark navy alt  */
 #define COLOR_DARK_GRAY     0x008B  /* dark blue      */
 #define COLOR_GRAY          0x008B  /* dark blue      */
