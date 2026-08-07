@@ -38,13 +38,13 @@
 #define DOT_SPAWN_X     310
 #define DOT_EAT_X       (PACMAN_MOUTH_X + DOT_RADIUS)  /* dot center at mouth edge */
 #define DOT_MAX_COUNT   20
-#define DOT_SPACING     26  /* minimum center-to-center pixel gap */
+#define DOT_SPACING     36  /* minimum center-to-center pixel gap */
 
 #define GHOST_W  28
 #define GHOST_H  32
 
 #define DOT_SPEED_MIN       1
-#define DOT_SPEED_MAX      16
+#define DOT_SPEED_MAX      20
 #define WPM_GHOST_THRESHOLD 30
 
 /* Dirty zone bits — track which screen bands need redraw.

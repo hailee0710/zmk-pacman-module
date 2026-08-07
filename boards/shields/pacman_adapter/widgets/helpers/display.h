@@ -56,7 +56,7 @@
 #define COLOR_GHOST_RED     0xFAEA  /* coral red      */
 #define COLOR_GHOST_PINK    0xFAB3  /* hot pink       */
 #define COLOR_GHOST_CYAN    0x039F  /* bright blue    */
-#define COLOR_GHOST_ORANGE  0xFC8A  /* orange         */
+#define COLOR_GHOST_ORANGE  0xFD40  /* bright orange   */
 
 /* Direction constants */
 #define DIR_RIGHT 0

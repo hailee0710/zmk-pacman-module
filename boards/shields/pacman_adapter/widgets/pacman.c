@@ -22,9 +22,9 @@ LOG_MODULE_REGISTER(pacman_status, CONFIG_DISPLAY_LOG_LEVEL);
 /* ---- Helpers ---- */
 
 static uint8_t wpm_to_speed(uint8_t wpm) {
-    if (wpm > 100) wpm = 100;
+    if (wpm > 80) wpm = 80;
     if (wpm == 0)  return DOT_SPEED_MIN;
-    return DOT_SPEED_MIN + (uint8_t)((uint16_t)wpm * (DOT_SPEED_MAX - DOT_SPEED_MIN) / 100);
+    return DOT_SPEED_MIN + (uint8_t)((uint16_t)wpm * (DOT_SPEED_MAX - DOT_SPEED_MIN) / 80);
 }
 
 static bool is_ghost_zone(uint8_t wpm) { return wpm >= WPM_GHOST_THRESHOLD; }
@@ -93,7 +93,7 @@ static void spawn(pacman_status_t *st) {
      * pushes the spawn point hundreds of pixels past the right
      * edge, making new dots invisible for seconds. */
     int16_t rightmost = DOT_SPAWN_X - DOT_SPACING;
-    int16_t cap       = DOT_SPAWN_X + DOT_SPACING * 3;  /* 388 — ~2.3s at speed 1 */
+    int16_t cap       = DOT_SPAWN_X + DOT_SPACING * 2;  /* 382 — 62px off-screen */
     for (int i = 0; i < DOT_MAX_COUNT; i++) {
         if (st->dots[i].active && st->dots[i].x > rightmost) {
             rightmost = st->dots[i].x;
@@ -221,7 +221,7 @@ static void render_zone(pacman_status_t *st) {
         pacman_dot_t *d = &st->dots[i];
         if (d->is_ghost)
             display_draw_ghost(d->x - GHOST_W / 2, DOT_Y - GHOST_H / 2, GHOST_W, GHOST_H,
-                               COLOR_GHOST_RED, true);
+                               COLOR_GHOST_ORANGE, true);
         else
             display_draw_dot(d->x, DOT_Y, DOT_RADIUS, COLOR_DOT_WHITE);
     }
