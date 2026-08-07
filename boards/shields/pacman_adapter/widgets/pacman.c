@@ -85,21 +85,16 @@ static void spawn(pacman_status_t *st) {
     if (idx < 0) return;
     pacman_dot_t *d = &st->dots[idx];
 
-    /* Find rightmost active dot to maintain consistent spacing.
-     * Cap the search window so dots never cascade unboundedly
-     * off-screen — without the cap, sustained typing at certain
-     * speeds (notably WPM 28-30 where speed=2 and spawn interval
-     * is tight enough that each dot lands ~2px right of the last)
-     * pushes the spawn point hundreds of pixels past the right
-     * edge, making new dots invisible for seconds. */
+    /* Place dot at least DOT_SPACING right of the rightmost active dot,
+     * clamped left to DOT_SPAWN_X so the first dot always enters on-screen.
+     * No right cap: with the current speed curve (speed ≥ 3 at WPM ≥ 10)
+     * the pipeline drains fast enough that cascading is self-limiting. */
     int16_t rightmost = DOT_SPAWN_X - DOT_SPACING;
-    int16_t cap       = DOT_SPAWN_X + DOT_SPACING * 2;  /* 382 — 62px off-screen */
     for (int i = 0; i < DOT_MAX_COUNT; i++) {
         if (st->dots[i].active && st->dots[i].x > rightmost) {
             rightmost = st->dots[i].x;
         }
     }
-    if (rightmost > cap) rightmost = cap;
 
     d->active   = true;
     d->is_ghost = is_ghost_zone(st->current_wpm);
@@ -274,14 +269,14 @@ static void render_bottom_bar(pacman_status_t *st) {
     }
 
     /* Area 3 (160-239): WPM */
-    display_write_text(193, by + 2, "WPM", COLOR_WHITE, COLOR_BLACK, 1, 0);
+    display_write_text(192, by + 2, "WPM", COLOR_WHITE, COLOR_BLACK, 1, 1);
     snprintf(buf, sizeof(buf), "%u", st->current_wpm);
-    display_write_text(185, by + 11, buf, COLOR_WHITE, COLOR_BLACK, 3, 0);
+    display_write_text(184, by + 11, buf, COLOR_WHITE, COLOR_BLACK, 3, 1);
 
     /* Area 4 (240-319): PEAK */
-    display_write_text(270, by + 2, "PEAK", COLOR_PINK, COLOR_BLACK, 1, 0);
+    display_write_text(269, by + 2, "PEAK", COLOR_PINK, COLOR_BLACK, 1, 1);
     snprintf(buf, sizeof(buf), "%u", st->peak_wpm);
-    display_write_text(258, by + 11, buf, COLOR_PINK, COLOR_BLACK, 3, 0);
+    display_write_text(257, by + 11, buf, COLOR_PINK, COLOR_BLACK, 3, 1);
 }
 
 void pacman_status_render(pacman_status_t *st) {
