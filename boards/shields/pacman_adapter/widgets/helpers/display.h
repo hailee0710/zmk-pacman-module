@@ -48,7 +48,7 @@
 #define COLOR_CYAN          0x039F  /* bright blue    */
 #define COLOR_GREEN         0x0660  /* green #0c0    */
 #define COLOR_ORANGE        0xFC8A  /* orange         */
-#define COLOR_PINK          0xFAB3  /* hot pink       */
+#define COLOR_PINK          0xFE7F  /* bright pink    */
 #define COLOR_MAGENTA       0xFAB3  /* hot pink       */
 #define COLOR_PURPLE        0xFAB3  /* hot pink       */
 

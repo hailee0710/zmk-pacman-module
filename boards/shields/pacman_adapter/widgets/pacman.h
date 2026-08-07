@@ -44,8 +44,8 @@
 #define GHOST_H  32
 
 #define DOT_SPEED_MIN       1
-#define DOT_SPEED_MAX       8
-#define WPM_GHOST_THRESHOLD 40
+#define DOT_SPEED_MAX      16
+#define WPM_GHOST_THRESHOLD 30
 
 /* Dirty zone bits — track which screen bands need redraw.
  * Kept in sync with display.h zone layout. */

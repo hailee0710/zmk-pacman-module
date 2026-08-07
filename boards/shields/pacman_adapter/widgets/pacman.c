@@ -22,9 +22,9 @@ LOG_MODULE_REGISTER(pacman_status, CONFIG_DISPLAY_LOG_LEVEL);
 /* ---- Helpers ---- */
 
 static uint8_t wpm_to_speed(uint8_t wpm) {
-    if (wpm > 120) wpm = 120;
+    if (wpm > 100) wpm = 100;
     if (wpm == 0)  return DOT_SPEED_MIN;
-    return DOT_SPEED_MIN + (uint8_t)((uint16_t)wpm * (DOT_SPEED_MAX - DOT_SPEED_MIN) / 120);
+    return DOT_SPEED_MIN + (uint8_t)((uint16_t)wpm * (DOT_SPEED_MAX - DOT_SPEED_MIN) / 100);
 }
 
 static bool is_ghost_zone(uint8_t wpm) { return wpm >= WPM_GHOST_THRESHOLD; }
@@ -85,13 +85,21 @@ static void spawn(pacman_status_t *st) {
     if (idx < 0) return;
     pacman_dot_t *d = &st->dots[idx];
 
-    /* Find rightmost active dot to maintain consistent spacing */
+    /* Find rightmost active dot to maintain consistent spacing.
+     * Cap the search window so dots never cascade unboundedly
+     * off-screen — without the cap, sustained typing at certain
+     * speeds (notably WPM 28-30 where speed=2 and spawn interval
+     * is tight enough that each dot lands ~2px right of the last)
+     * pushes the spawn point hundreds of pixels past the right
+     * edge, making new dots invisible for seconds. */
     int16_t rightmost = DOT_SPAWN_X - DOT_SPACING;
+    int16_t cap       = DOT_SPAWN_X + DOT_SPACING * 3;  /* 388 — ~2.3s at speed 1 */
     for (int i = 0; i < DOT_MAX_COUNT; i++) {
         if (st->dots[i].active && st->dots[i].x > rightmost) {
             rightmost = st->dots[i].x;
         }
     }
+    if (rightmost > cap) rightmost = cap;
 
     d->active   = true;
     d->is_ghost = is_ghost_zone(st->current_wpm);
@@ -183,7 +191,7 @@ static void render_top_bar(pacman_status_t *st) {
 
     /* Layer name — top-left, scale 2, inset for curved corner.
      * Bar is 36px, text 14px tall at scale 2. Center: (36-14)/2 = 11. */
-    display_write_text(12, 11, st->layer_name, COLOR_GREEN, COLOR_BLACK, 2, 1);
+    display_write_text(12, 11, st->layer_name, COLOR_CYAN, COLOR_BLACK, 2, 1);
 
     /* Title — centered, scale 2, spaced letters.
      * 6 chars × 10px + 5 gaps × 4px = 80px. Center: (320-80)/2 = 120. */
@@ -201,7 +209,7 @@ static void render_top_bar(pacman_status_t *st) {
         display_write_text(264, 11, "---", COLOR_RED, COLOR_BLACK, 2, 1);
     }
 
-    display_draw_line(0, TOP_BAR_H - 1, SCREEN_W - 1, TOP_BAR_H - 1, COLOR_LIGHT_GRAY);
+    display_draw_line(0, TOP_BAR_H - 1, SCREEN_W - 1, TOP_BAR_H - 1, COLOR_BLUE);
 }
 
 static void render_zone(pacman_status_t *st) {
@@ -222,7 +230,7 @@ static void render_zone(pacman_status_t *st) {
     display_draw_pacman(PACMAN_CX, PACMAN_CY, PACMAN_RADIUS, DIR_RIGHT, st->mouth_frame,
                         COLOR_PACMAN_YELLOW);
 
-    display_draw_line(0, BOTTOM_BAR_Y - 1, SCREEN_W - 1, BOTTOM_BAR_Y - 1, COLOR_LIGHT_GRAY);
+    display_draw_line(0, BOTTOM_BAR_Y - 1, SCREEN_W - 1, BOTTOM_BAR_Y - 1, COLOR_BLUE);
 }
 
 static void render_bottom_bar(pacman_status_t *st) {
@@ -235,7 +243,7 @@ static void render_bottom_bar(pacman_status_t *st) {
     /* Thin light-gray dividers between areas */
     for (uint8_t i = 1; i < 4; i++) {
         uint16_t dx = i * 80;
-        display_draw_line(dx, by + 4, dx, by + BOTTOM_BAR_H - 4, COLOR_LIGHT_GRAY);
+        display_draw_line(dx, by + 4, dx, by + BOTTOM_BAR_H - 4, COLOR_BLUE);
     }
 
     /* Area 1 (0-79): left battery.
